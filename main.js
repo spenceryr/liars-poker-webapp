@@ -1,276 +1,117 @@
-class Card {
-  constructor(value, suit) {
-    this.value = value;
-    this.suit = suit;
-  }
+'use strict';
 
-  static get MAX_VALUE() { return 14; }
-  static get MIN_VALUE() { return 2; }
-}
+const {
+  WebSocketServer
+} = require("ws");
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
+const express = require("express");
+const session = require("express-session");
+const FileStore = require('session-file-store')(session)
 
-class PlayerCustomHand {
-  constructor() {
-    this.items = [];
-    this.count = 0;
-    this.highestItemCount = 0;
-    this.highestItemValue = 0;
-  }
+const {
+  Card,
+  PlayerCustomHand,
+  PlayerCustomHandItem,
+  PlayingCards,
+  Player,
+  GameStateMachine,
+  PreGameLobby,
+  Game
+} = require("./types.js");
+const {
+  LANDING_PAGE_EVENTS,
+  LANDING_PAGE_EVENT_REQS,
+  LOBBY_EVENTS,
+  LOBBY_EVENT_REQS,
+  GAME_EVENTS
+} = require("./events.js");
+const { type } = require("os");
 
-  static get COUNT_MAX() { return 5 };
+var SERVER_KEY_PATH = "./server.key";
+var SERVER_CERT_PATH = "./server.cert";
+var LOBBY_PASSWORD = "lobby_password";
+var SESSION_COOKIE_SECRET = "session_cookie_secret";
+var SESSION_STORE_PATH = "./sessions";
+var SESSION_STORE_SECRET = "session_store_secret";
 
-  /**
-   *
-   * @param {PlayerCustomHandItem} item
-   * @returns
-   */
-  addItem(item) {
-    if (this.count > PlayerCustomHand.COUNT_MAX - item.count) return;
-    this.items.push(item);
-    this.count += item.count;
-    if (item.count >= this.highestItemCount) {
-      this.highestItemCount = item.count;
-      if (item.value >= this.highestItemValue) {
-        this.highestItemValue = item.value;
-      }
-    }
-    let insertIndex = this.items.length;
-    for (const [index, existingItem] of this.items.entries()) {
-      if (item.count > existingItem.count) {
-        insertIndex = index;
-        break;
-      } else if (item.count == existingItem.count && item.value > existingItem.value) {
-        insertIndex = index;
-        break;
-      }
-    }
-    this.items.splice(insertIndex, 0, item);
-  }
-
-  removeItem(item) {
-    let index = this.items.findIndex((element) => element.count == item.count && element.value == item.value);
-    if (typeof index == "undefined") return;
-    delete items[index];
-    this.count -= item.count;
-  }
-
-  compare(against) {
-    const min = Math.min(this.items.length, against.items.length);
-    for (let i = 0; i < min; i++) {
-      let thisItem = this.items[i];
-      let againstItem = against.items[i];
-      if (thisItem.count == againstItem.count) {
-        if (thisItem.value == againstItem.value) {
-          continue;
-        }
-        return thisItem.value > againstItem.value ? 1 : -1;
-      }
-      return thisItem.count > againstItem.count ? 1 : -1;
-    }
-    if (this.items.length == against.items.length) {
-      return 0;
-    }
-    return this.items.length > against.items.length ? 1 : -1;
-  }
-}
-
-class PlayerCustomHandItem {
-  /**
-   *
-   * @param {number} value
-   * @param {number} count
-   */
-  constructor(value, count) {
-    if (value > Card.MAX_VALUE) value = Card.MAX_VALUE;
-    else if (value < Card.MIN_VALUE) value = Card.MIN_VALUE;
-    if (count > PlayerCustomHandItem.MAX_COUNT) count = PlayerCustomHandItem.MAX_COUNT;
-    else if (count <= PlayerCustomHandItem.MIN_COUNT) count = PlayerCustomHandItem.MIN_COUNT;
-    this.value = value;
-    this.count = count;
-  }
-
-  static get MAX_COUNT() { return 4; }
-  static get MIN_COUNT() { return 1; }
-}
-
-// 2*13 2*12 14 = 61544
-// 2*14 2*2 =
-
-class PlayingCards {
-  constructor(numCards) {
-    this.cardsInPlay = [];
-    let deckCopy = [...FULL_DECK];
-    for (let i = 0; i < numCards; i++) {
-      let index = Math.floor(Math.random() * (52 - i));
-      this.cardsInPlay.push(deckCopy[index]);
-      deckCopy.splice(index, 1);
-    }
-  }
-
-  deal(numCardsPerPlayer) {
-    if (numCardsPerPlayer.reduce((acc, curr) => acc + curr, 0) != numCards) {
-      return undefined;
-    }
-    let allPlayerCards = [];
-    let numCardsInPlay = this.cardsInPlay.length;
-    let cardsInPlayCopy = [...this.cardsInPlay];
-    for (let numCards in numCardsPerPlayer) {
-      let playerCards = [];
-      for (let i = 0; i < numCards; i++) {
-        let index = Math.floor(Math.random() * (numCardsInPlay - i));
-        playerCards.push(cardsInPlayCopy[index]);
-        cardsInPlayCopy.splice(index, 1);
-      }
-      allPlayerCards.push(playerCards);
-    }
-    return allPlayerCards;
-  }
-
-
-  static FULL_DECK = (() => {
-    var values = [...Array(Card.MAX_VALUE - Card.MIN_VALUE + 1).keys()].map((_, i) => i + Card.MIN_VALUE);
-    var suits = ["D", "C", "S", "H"];
-    return values.flatMap((v) => suits.map((s) => { return new Card(v, s) }));
-  })();
-}
-
-class Player {
-  static get NUM_STARTING_CARDS() { return 5 };
-
-  constructor(id) {
-    this.numCards = NUM_STARTING_CARDS;
-    this.cards = undefined;
-    this.id = id;
-  }
-}
-
-class GameStateMachine {
-  constructor(game) {
-    this.game = game;
-    this.state = GameStateMachine.GAME_STATES.NOT_STARTED;
-  }
-
-  static GAME_STATES = {
-    NOT_STARTED: 0,
-    SETUP: 1,
-    PLAYER_TURN: 2,
-    PLAYER_TURN_END: 3,
-    REVEAL: 4,
-    ROUND_OVER: 5,
-    GAME_OVER: 6,
+/**
+ * @param {Express} app
+ * @returns {https.Server}
+ */
+function createHTTPSServer(app) {
+  const options = {
+    key: fs.readFileSync(SERVER_KEY_PATH),
+    cert: fs.readFileSync(SERVER_CERT_PATH),
   };
-
-  static VALID_TRANSITIONS = (() => {
-    let t = {};
-    t[this.GAME_STATES.NOT_STARTED] = [this.GAME_STATES.SETUP];
-    t[this.GAME_STATES.SETUP] = [this.GAME_STATES.PLAYER_TURN, this.GAME_STATES.GAME_OVER];
-    t[this.GAME_STATES.PLAYER_TURN] = [this.GAME_STATES.REVEAL, this.GAME_STATES.PLAYER_TURN_END, this.GAME_STATES.GAME_OVER];
-    t[this.GAME_STATES.PLAYER_TURN_END] = [this.GAME_STATES.PLAYER_TURN, this.GAME_STATES.GAME_OVER];
-    t[this.GAME_STATES.REVEAL] = [this.GAME_STATES.ROUND_OVER, this.GAME_STATES.GAME_OVER];
-    t[this.GAME_STATES.ROUND_OVER] = [this.GAME_STATES.SETUP, this.GAME_STATES.GAME_OVER];
-    t[this.GAME_STATES.GAME_OVER] = [];
-    return t;
-  })();
-
-  transitionFuncs = (() => {
-    let t = {};
-    t[GameStateMachine.GAME_STATES.NOT_STARTED] = () => {};
-    t[GameStateMachine.GAME_STATES.SETUP] = this.onSetup;
-    t[GameStateMachine.GAME_STATES.PLAYER_TURN] = this.onPlayerTurn;
-    t[GameStateMachine.GAME_STATES.PLAYER_TURN_END] = this.onPlayerTurnEnd;
-    t[GameStateMachine.GAME_STATES.REVEAL] = this.onReveal;
-    t[GameStateMachine.GAME_STATES.ROUND_OVER] = this.onRoundOver;
-    t[GameStateMachine.GAME_STATES.GAME_OVER] = this.onGameOver;
-    return t;
-  })();
-
-  transition(nextState) {
-    if (Game.VALID_TRANSITIONS[this.state].includes(nextState)) {
-      this.state = nextState;
-      this.transitionFuncs[nextState]();
-    }
-  }
-
-  onSetup() {
-    this.game.playingCards = new PlayingCards(this.game.numCardsInPlay);
-    let numCardsPerPlayer = this.game.players.map((player) => player.numCards);
-    let hands = this.game.playingCards.deal(numCardsPerPlayer);
-    hands.forEach((cards, i) => this.game.players[i].cards = cards);
-  }
-  onPlayerTurn() {
-
-  }
-  onPlayerTurnEnd() {
-    this.game.currentPlayerTurn = (this.game.currentPlayerIndexTurn + 1) % this.game.players.length;
-  }
-  onReveal() {
-
-  }
-  onRoundOver() {
-    this.game.numCardsInPlay -= 1;
-  }
-  onGameOver() {
-
-  }
+  return https.createServer(options, app);
 }
 
-class PreGameLobby {
-  constructor(id, password) {
-    this.players = [];
-    this.id = id;
-    this.acceptingNewPlayers = true;
-    this.lobbyPassword = password;
-  }
+/**
+ *
+ * @param {https.Server} httpsServer
+ * @param {session} sessionRouter
+ * @returns {WebSocketServer}
+ */
+function createWSServer(httpsServer, sessionRouter) {
+  const wss = new WebSocketServer({ clientTracking: false, noServer: true });
+  httpsServer.on('upgrade', function upgrade(request, socket, head) {
+    sessionRouter(request, {}, () => {
+      const client = authenticate(request);
+      if (!client) {
+        console.error("No client!");
+        socket.destroy;
+        return;
+      }
 
-  playerJoined(playerID) {
-    if (!this.acceptingNewPlayers) return false;
-    this.players.push(new Player(playerID));
-    if (this.players.length >= Game.PLAYERS_MAX) this.acceptingNewPlayers = false;
-    return true;
-  }
+      wss.handleUpgrade(request, socket, head, function done(ws) {
+        wss.emit('connection', ws, request, client);
+      });
+    });
+  });
 
-  playerLeft(playerID) {
-    let index = this.players.findIndex((player) => player.id == playerID);
-    if (index == -1) return;
-    this.players.splice(index, 1);
-    this.acceptingNewPlayers = true;
-  }
+  wss.on('connection', function connection(/** @type{WebSocket} */ ws, request, client) {
+    ws.on('error', console.error);
+    ws.on('message', function message(data) {
+      console.log(`Received message ${data} from user ${client}`);
+    });
+    ws.send("What up dude!");
+  });
+
+  return wss;
 }
 
-class Game {
-  static get PLAYERS_MAX() { return 6; }
+function expressSetup(sessionRouter) {
+  const app = express();
+  app.use(express.static("public"));
+  // app.use(sessionRouter);
+  return app;
+}
 
-  constructor(playerIDs, startingPlayerID) {
-    let numPlayers = playerIDs.length;
-    if (numPlayers > PLAYERS_MAX) throw new Error("Can't have a game with more than ${Game.PLAYERS_MAX} players");
-    if (!playerIDs.includes(startingPlayerID)) throw new Error("PlayerID for starting player not found");
-    this.players = [...Array(numPlayers).keys()].map((i) => new Player(playerIDs[i]));
-    this.numCardsInPlay = numPlayers * Player.NUM_STARTING_CARDS;
-    this.playingCards = undefined;
-    this.currentPlayerIndexTurn = startingPlayerID;
-    this.stateMachine = GameStateMachine();
-  }
-
-  playerCalled(callingPlayer) {
-
-  }
-  playerProposedHand(hand) {
-
-  }
+function authenticate() {
+  return true;
 }
 
 function main() {
-  const http = require('http');
-
-  const hostname = '127.0.0.1';
-  const port = 3000;
-
-  const server = http.createServer((req, res) => {
-    res.statusCode = 200;
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('Hello World');
+  let sessionRouter = session({
+    cookie: { maxAge: 86400000 },
+    saveUninitialized: false,
+    store: new FileStore({
+      path: SESSION_STORE_PATH,
+      ttl: 86400,
+      reapAsync: true,
+      reapSyncFallback: true,
+      secret: SESSION_STORE_SECRET
+    }),
+    resave: false,
+    secret: SESSION_COOKIE_SECRET,
   });
+  const app = expressSetup(sessionRouter);
+  const httpsServer = createHTTPSServer(app);
+  const wss = createWSServer(httpsServer, sessionRouter);
 
-  server.listen(port, hostname, () => {
-    console.log(`Server running at http://${hostname}:${port}/`);
-  });
+  httpsServer.listen(8080);
 }
+
+main();

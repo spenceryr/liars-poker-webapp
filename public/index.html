@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <title>Liar's Poker</title>
+  <style>
+    * {
+      padding: 0;
+      margin: 0;
+    }
+    canvas {
+      background: #eee;
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+
+<body>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      // Create WebSocket connection.
+      console.log(`Creating ws at wss://${location.host}`);
+      const socket = new WebSocket(`wss://${location.host}`);
+
+      // Connection opened
+      socket.addEventListener("open", (event) => {
+        socket.send("Hello Server!");
+      });
+
+      socket.addEventListener("error", (event) => {
+        console.error(`Websocket error: ${JSON.stringify(event, ["message", "arguments", "type", "name"])}`);
+      });
+
+      // Listen for messages
+      socket.addEventListener("message", (event) => {
+        console.log("Message from server ", event.data);
+      });
+    });
+  </script>
+  <h1>Liar's Poker</h1>
+  <canvas id="gameCanvas" width="480" height="320"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    ctx.beginPath();
+    ctx.rect(20, 40, 50, 50);
+    ctx.fillStyle = "#FF0000";
+    ctx.fill();
+    ctx.closePath();
+
+  </script>
+</body>
