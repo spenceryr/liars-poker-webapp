@@ -1,0 +1,15 @@
+{
+  "name": "liars-poker-server",
+  "version": "0.1.0",
+  "description": "Server component for liar's poker game.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "git@github.com:spenceryr/liars-poker-server.git",
+  "author": "Spencer Reitman",
+  "license": "LGPL-3.0-or-later",
+  "devDependencies": {
+    "@types/node": "^20.6.3"
+  }
+}
