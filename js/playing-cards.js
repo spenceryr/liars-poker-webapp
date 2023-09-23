@@ -11,6 +11,11 @@ export class PlayingCards {
     }
   }
 
+  /**
+   *
+   * @param {number[]} numCardsPerPlayer
+   * @returns
+   */
   deal(numCardsPerPlayer) {
     if (numCardsPerPlayer.reduce((acc, curr) => acc + curr, 0) != numCards) {
       return undefined;
@@ -49,7 +54,7 @@ export class PlayingCards {
    * @type {Card[]}
    */
   static FULL_DECK = (() => {
-    var values = [...Array(Card.MAX_VALUE - Card.MIN_VALUE + 1).keys()].map((_, i) => i + Card.MIN_VALUE);
+    var values = Array.from({ length: Card.MAX_VALUE - Card.MIN_VALUE + 1 }, (_, i) => i + Card.MIN_VALUE);
     var suits = ["D", "C", "S", "H"];
     return values.flatMap((v) => suits.map((s) => { return new Card(v, s); }));
   })();

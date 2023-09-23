@@ -20,6 +20,7 @@ export class PlayerCustomHandItem {
 // TODO: (spencer) Most of this probably is client side only. Just need the compare function here.
 export class PlayerCustomHand {
   constructor() {
+    /** @type {PlayerCustomHandItem[]} */
     this.items = [];
     this.count = 0;
     this.highestItemCount = 0;

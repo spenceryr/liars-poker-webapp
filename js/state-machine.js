@@ -21,7 +21,9 @@ export class StateMachine {
     if (this.states[this.state].transitions.includes(nextState)) {
       this.state = nextState;
       this.emitter.emit("state_change", nextState);
+      return true;
     }
+    return false;
   }
 
   verifyStates(...states) {
