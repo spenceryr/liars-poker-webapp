@@ -82,9 +82,10 @@ export class Game {
   handleStateChange(newState) {
     const GAME_STATES = GameStateMachine.GAME_STATES;
     switch (newState) {
-      case GAME_STATES.NOT_STARTED:
+      case GAME_STATES.NOT_STARTED: {
         break;
-      case GAME_STATES.SETUP:
+      }
+      case GAME_STATES.SETUP: {
         this.playingCards = new PlayingCards(this.numCardsInPlay);
         let numCardsPerPlayer = this.players.map((player) => player.numCards);
         let hands = this.playingCards.deal(numCardsPerPlayer);
@@ -94,13 +95,15 @@ export class Game {
           GAME_EVENT.SETUP.obj(PlayerHandsObj(this.players))
         );
         break;
-      case GAME_STATES.PLAYER_TURN:
+      }
+      case GAME_STATES.PLAYER_TURN: {
         this.emitter.emit(
           GAME_EVENT.PLAYER_TURN.id,
           GAME_EVENT.PLAYER_TURN.obj(this.players[this.currentPlayerIndexTurn].id)
         );
         break;
-      case GAME_STATES.PLAYER_TURN_END:
+      }
+      case GAME_STATES.PLAYER_TURN_END: {
         this.emitter.emit(
           GAME_EVENT.PLAYER_PROPOSE_HAND.id,
           GAME_EVENT.PLAYER_PROPOSE_HAND.obj(
@@ -110,7 +113,8 @@ export class Game {
         )
         this.currentPlayerIndexTurn = this.playerIndexOffset(1);
         break;
-      case GAME_STATES.REVEAL:
+      }
+      case GAME_STATES.REVEAL: {
         const isItThere = this.playingCards.isItThere(
           this.lastHand.items.flatMap((item) => {
             return Array.from(
@@ -123,12 +127,24 @@ export class Game {
         loser.numCards -= 1;
         this.emitter.emit(GAME_EVENT.REVEAL.id, GAME_EVENT.REVEAL.obj(PlayerHandsObj(this.players), loser.id, winner.id));
         break;
-      case GAME_STATES.ROUND_OVER:
+      }
+      case GAME_STATES.ROUND_OVER: {
         this.numCardsInPlay -= 1;
         break;
-      case GAME_STATES.GAME_OVER:
-        this.emitter.emit(GAME_EVENT.GAME_OVER.id, this.players.find((player) => this.isPlayerPlaying(player)).id)
+      }
+      case GAME_STATES.GAME_OVER: {
+        let winner = null;
+        for (const player in this.players) {
+          if (!this.isPlayerPlaying(player)) continue;
+          if (winner === null) winner = player.id;
+          else {
+            winner = -1;
+            break;
+          }
+        }
+        this.emitter.emit(GAME_EVENT.GAME_OVER.id, winner)
         break;
+      }
     }
   }
 
