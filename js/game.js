@@ -57,6 +57,11 @@ export const GAME_EVENT = {
 export class Game {
   static get PLAYERS_MAX() { return 6; }
 
+  /**
+   *
+   * @param {Player[]} players
+   * @param {Player} startingPlayer
+   */
   constructor(players, startingPlayer) {
     let numPlayers = players.length;
     assert(numPlayers <= PLAYERS_MAX);
@@ -138,7 +143,7 @@ export class Game {
           if (!this.isPlayerPlaying(player)) continue;
           if (winner === null) winner = player.id;
           else {
-            winner = -1;
+            winner = null;
             break;
           }
         }
@@ -175,8 +180,8 @@ export class Game {
     return this.stateMachine.transition(GameStateMachine.GAME_STATES.SETUP);
   }
 
-  endGameIfNecessary() {
-    if (this.numPlayingPlayers() <= 1) {
+  endGameIfNecessary(force) {
+    if (force || this.numPlayingPlayers() <= 1) {
       return this.stateMachine.transition(GameStateMachine.GAME_STATES.GAME_OVER);
     }
     return false;
@@ -227,13 +232,13 @@ class GameStateMachine {
   }
 
   static GAME_STATES = {
-    NOT_STARTED: "0",
-    SETUP: "1",
-    PLAYER_TURN: "2",
-    PLAYER_TURN_END: "3",
-    REVEAL: "4",
-    ROUND_OVER: "5",
-    GAME_OVER: "6",
+    NOT_STARTED: "NOT_STARTED",
+    SETUP: "SETUP",
+    PLAYER_TURN: "PLAYER_TURN",
+    PLAYER_TURN_END: "PLAYER_TURN_END",
+    REVEAL: "REVEAL",
+    ROUND_OVER: "ROUND_OVER",
+    GAME_OVER: "GAME_OVER",
   };
 
   static VALID_TRANSITIONS = (() => {

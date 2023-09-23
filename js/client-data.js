@@ -2,12 +2,20 @@ import { StateMachine } from "./state-machine";
 import { LeakyBucket } from "./leaky-bucket";
 
 /**
- * @typedef {number} ClientID
+ * @typedef {string} ClientID
  */
 export class ClientData {
-  constructor(clientID) {
+  /**
+   *
+   * @param {ClientID} clientID
+   * @param {WebSocket} ws
+   */
+  constructor(clientID, ws) {
     this.leakyBucket = new LeakyBucket(10, 1000);
     this.clientID = clientID;
+    /** @type {WebSocket} */
+    this.ws = ws;
+    this.lobbyID = null;
     this.stateMachine = new ClientStateMachine();
     this.stateMachine.emitter.on("state_change", this.handleStateChange);
   }
@@ -25,6 +33,10 @@ export class ClientData {
         break;
     }
   }
+
+  get connected() {
+    return this.ws.readyState == WebSocket.OPEN;
+  }
 }
 
 class ClientStateMachine {
@@ -41,18 +53,20 @@ class ClientStateMachine {
   }
 
   static CLIENT_STATES = {
-    NOT_IN_LOBBY: "0",
-    IN_LOBBY: "1",
-    IN_GAME: "2",
-    END_GAME: "3",
+    DISCONNECTED: "DISCONNECTED",
+    NOT_IN_LOBBY: "NOT_IN_LOBBY",
+    IN_LOBBY: "IN_LOBBY",
+    IN_GAME: "IN_GAME",
+    END_GAME: "END_GAME",
   };
 
   static VALID_TRANSITIONS = (() => {
+    const CLIENT_STATES = this.CLIENT_STATES;
     let t = {};
-    t[this.CLIENT_STATES.NOT_IN_LOBBY] = [this.CLIENT_STATES.IN_LOBBY];
-    t[this.CLIENT_STATES.IN_LOBBY] = [this.CLIENT_STATES.IN_GAME, this.CLIENT_STATES.NOT_IN_LOBBY];
-    t[this.CLIENT_STATES.IN_GAME] = [this.CLIENT_STATES.END_GAME, this.CLIENT_STATES.NOT_IN_LOBBY];
-    t[this.CLIENT_STATES.END_GAME] = [this.CLIENT_STATES.IN_GAME, this.CLIENT_STATES.IN_LOBBY, this.CLIENT_STATES.NOT_IN_LOBBY];
+    t[CLIENT_STATES.NOT_IN_LOBBY] = [CLIENT_STATES.IN_LOBBY];
+    t[CLIENT_STATES.IN_LOBBY] = [CLIENT_STATES.IN_GAME, CLIENT_STATES.NOT_IN_LOBBY];
+    t[CLIENT_STATES.IN_GAME] = [CLIENT_STATES.END_GAME, CLIENT_STATES.NOT_IN_LOBBY];
+    t[CLIENT_STATES.END_GAME] = [CLIENT_STATES.IN_LOBBY, CLIENT_STATES.NOT_IN_LOBBY];
     return t;
   })();
 }
