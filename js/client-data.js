@@ -37,6 +37,10 @@ export class ClientData {
   get connected() {
     return this.ws.readyState == WebSocket.OPEN;
   }
+
+  get disconnected() {
+    return this.ws.readyState == WebSocket.CLOSED;
+  }
 }
 
 class ClientStateMachine {

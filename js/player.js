@@ -7,6 +7,7 @@ export class Player {
     this.numCards = NUM_STARTING_CARDS;
     /** @type {Card[]} */
     this.cards = [];
+    /** @type {string} */
     this.id = id;
   }
 }
