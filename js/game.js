@@ -7,51 +7,12 @@ import { Card } from "./card";
 
 let gameEventID = 0;
 
-/**
- *
- * @param {Player[]} players
- */
-function PlayerHandsObj(players) {
-  return players.reduce((acc, curr) => Object.assign(
-    acc,
-    { [curr.id]: curr.cards.map((card) => Object({...card})) }
-  ), {});
-}
-
-/**
- *
- * @param {PlayerCustomHand} proposedHand
- * @returns
- */
-function PlayerProposedHandObj(proposedHand) {
-  return proposedHand.items.reduce((acc, curr) => Object.assign(acc, { [curr.value]: curr.count }), {});
-}
-
 export const GAME_EVENT = {
-  SETUP: {
-    id: gameEventID++,
-    obj: (playerHands) => Object({ playerHands: playerHands })
-  },
-  PLAYER_TURN: {
-    id: gameEventID++,
-    obj: (playerID) => Object({ playerID: playerID })
-  },
-  PLAYER_PROPOSE_HAND: {
-    id: gameEventID++,
-    obj: (playerID, hand) => Object({ playerID: playerID, hand: hand })
-  },
-  REVEAL: {
-    id: gameEventID++,
-    obj: (playerHands, losingPlayerID, winningPlayerID) => Object({
-      playerHands: playerHands,
-      losingPlayerID: losingPlayerID,
-      winningPlayerID: winningPlayerID,
-    })
-  },
-  GAME_OVER: {
-    id: gameEventID++,
-    obj: (winnerID) => Object({ winnerID: winnerID })
-  },
+  SETUP: gameEventID++,
+  PLAYER_TURN: gameEventID++,
+  PLAYER_PROPOSE_HAND: gameEventID++,
+  REVEAL: gameEventID++,
+  GAME_OVER: gameEventID++,
 };
 
 export class Game {
@@ -95,53 +56,39 @@ export class Game {
         let numCardsPerPlayer = this.players.map((player) => player.numCards);
         let hands = this.playingCards.deal(numCardsPerPlayer);
         hands.forEach((cards, i) => this.players[i].cards = cards);
-        this.emitter.emit(
-          GAME_EVENT.SETUP,
-          GAME_EVENT.SETUP.obj(PlayerHandsObj(this.players))
-        );
+        this.emitter.emit(GAME_EVENT.SETUP, this.players);
         break;
       }
       case GAME_STATES.PLAYER_TURN: {
-        this.emitter.emit(
-          GAME_EVENT.PLAYER_TURN.id,
-          GAME_EVENT.PLAYER_TURN.obj(this.players[this.currentPlayerIndexTurn].id)
-        );
+        this.emitter.emit(GAME_EVENT.PLAYER_TURN, this.players[this.currentPlayerIndexTurn]);
         break;
       }
       case GAME_STATES.PLAYER_TURN_END: {
-        this.emitter.emit(
-          GAME_EVENT.PLAYER_PROPOSE_HAND.id,
-          GAME_EVENT.PLAYER_PROPOSE_HAND.obj(
-            this.players[this.currentPlayerIndexTurn].id,
-            PlayerProposedHandObj(this.lastHand)
-          )
-        )
+        let player = this.players[this.currentPlayerIndexTurn];
         this.currentPlayerIndexTurn = this.playerIndexOffset(1);
+        this.emitter.emit(
+          GAME_EVENT.PLAYER_PROPOSE_HAND,
+          {
+            "player": player,
+            "proposedHand": this.lastHand,
+          }
+        );
         break;
       }
       case GAME_STATES.REVEAL: {
-        const isItThere = this.playingCards.isItThere(
-          this.lastHand.items.flatMap((item) => {
-            return Array.from(
-              { length: item.count },
-              (_, _) => new Card(item.value, "")
-            )
-          })
-        );
+        const isItThere = this.playingCards.isItThere(this.lastHand.cards);
         let [winner, loser] = isItThere ? [this.calledPlayer, this.callingPlayer] : [this.callingPlayer, this.calledPlayer];
         loser.numCards -= 1;
-        this.emitter.emit(GAME_EVENT.REVEAL.id, GAME_EVENT.REVEAL.obj(PlayerHandsObj(this.players), loser.id, winner.id));
-        break;
-      }
-      case GAME_STATES.ROUND_OVER: {
         this.numCardsInPlay -= 1;
+        this.emitter.emit(GAME_EVENT.REVEAL, { "loser": loser, "winner": winner });
         break;
       }
       case GAME_STATES.GAME_OVER: {
         let winner = null;
-        for (const player in this.players) {
+        for (const player of this.players) {
           if (!this.isPlayerPlaying(player)) continue;
-          if (winner === null) winner = player.id;
+          if (winner === null) winner = player;
+          // Multiple players in play === No winner
           else {
             winner = null;
             break;
@@ -154,6 +101,11 @@ export class Game {
   }
 
   // Helpers
+  /**
+   *
+   * @param {number} offset
+   * @returns
+   */
   playerIndexOffset(offset) {
     for (let i = 0; i < this.players.length; i++) {
       const index = (this.currentPlayerIndexTurn + i + offset) % this.players.length;
@@ -162,11 +114,21 @@ export class Game {
     }
   }
 
+  /**
+   *
+   * @param {Player} player
+   * @returns
+   */
   getPlayerIndex(player) {
     if (!this.isPlayerPlaying(player)) return -1;
     return this.players.indexOf(player);
   }
 
+  /**
+   *
+   * @param {Player} player
+   * @returns
+   */
   isPlayerPlaying(player) {
     return player.numCards > 0;
   }
@@ -180,11 +142,16 @@ export class Game {
     return this.stateMachine.transition(GameStateMachine.GAME_STATES.SETUP);
   }
 
-  endGameIfNecessary(force) {
-    if (force || this.numPlayingPlayers() <= 1) {
-      return this.stateMachine.transition(GameStateMachine.GAME_STATES.GAME_OVER);
+  /**
+   *
+   * @param {boolean} forceEnd
+   * @returns
+   */
+  startNextRoundOrEndGame(forceEnd = false) {
+    if (forceEnd || this.numPlayingPlayers() <= 1) {
+      this.stateMachine.transition(GameStateMachine.GAME_STATES.GAME_OVER);
     }
-    return false;
+    this.stateMachine.transition(GameStateMachine.GAME_STATES.SETUP);
   }
 
   playerStartTurn() {
@@ -192,9 +159,17 @@ export class Game {
   }
 
   // Player controlled calls.
-  playerCalled(callingPlayer) {
+  // TODO: (spencer) Maybe add a time window where this can't be called after a state transition to prevent
+  //       last minute calls that end up on the wrong user.
+  /**
+   *
+   * @param {Player} callingPlayer
+   * @param {Player} calledPlayer
+   * @returns
+   */
+  playerCalled(callingPlayer, calledPlayer) {
     if (!this.stateMachine.verifyState(GameStateMachine.GAME_STATES.PLAYER_TURN)) return;
-    let calledPlayer = this.players[this.playerIndexOffset(-1)];
+    if(calledPlayer !== this.players[this.playerIndexOffset(-1)]) return;
     let callingPlayerIndex = this.getPlayerIndex(callingPlayer);
     if (callingPlayerIndex < 0) return;
     if (callingPlayer === calledPlayer) return;
@@ -223,7 +198,7 @@ class GameStateMachine {
     let states = {};
     for (const state in GAME_STATES) {
       if (!GameStateMachine.GAME_STATES.hasOwnProperty(state)) return;
-      states[state] = new {
+      states[state] = {
         transitions: GameStateMachine.VALID_TRANSITIONS[state],
       };
     }
@@ -237,19 +212,17 @@ class GameStateMachine {
     PLAYER_TURN: "PLAYER_TURN",
     PLAYER_TURN_END: "PLAYER_TURN_END",
     REVEAL: "REVEAL",
-    ROUND_OVER: "ROUND_OVER",
     GAME_OVER: "GAME_OVER",
   };
 
   static VALID_TRANSITIONS = (() => {
     let t = {};
-    const GAME_STATES = GAME_STATES;
+    const GAME_STATES = this.GAME_STATES;
     t[GAME_STATES.NOT_STARTED] = [GAME_STATES.SETUP];
     t[GAME_STATES.SETUP] = [GAME_STATES.PLAYER_TURN, GAME_STATES.GAME_OVER];
     t[GAME_STATES.PLAYER_TURN] = [GAME_STATES.REVEAL, GAME_STATES.PLAYER_TURN_END, GAME_STATES.GAME_OVER];
     t[GAME_STATES.PLAYER_TURN_END] = [GAME_STATES.PLAYER_TURN, GAME_STATES.GAME_OVER];
-    t[GAME_STATES.REVEAL] = [GAME_STATES.ROUND_OVER, GAME_STATES.GAME_OVER];
-    t[GAME_STATES.ROUND_OVER] = [GAME_STATES.SETUP, GAME_STATES.GAME_OVER];
+    t[GAME_STATES.REVEAL] = [GAME_STATES.SETUP, GAME_STATES.GAME_OVER];
     t[GAME_STATES.GAME_OVER] = [];
     return t;
   })();

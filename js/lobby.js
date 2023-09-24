@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto";
 import { Player } from "./player";
 import { ClientData } from "./client-data";
-import { Game } from "./game";
+import { GAME_EVENT, Game } from "./game";
+import { Card } from "./card";
 /**
  * @typedef {string} ClientID
  */
@@ -67,6 +68,7 @@ export class Lobby {
   }
 
   startGame() {
+    if (this.game) return;
     /** @type {Player} */
     let startingPlayer = null;
     if (this.lastWinner) startingPlayer = this.playerIDToClientMap.get(this.clientIDToPlayerIDMap.get(this.lastWinner)).player;
@@ -74,6 +76,70 @@ export class Lobby {
     shuffleArray(players);
     if (!startingPlayer) startingPlayer = players[Math.floor(Math.random() * players.length)];
     this.game = new Game(Array.from(this.clients.values()).map((client) => client.player), startingPlayer);
+    this.subscribeToGameEvents();
+    if (!this.game.start()) {
+      this.game = null;
+    }
+  }
+
+  subscribeToGameEvents() {
+    this.game.emitter.on(GAME_EVENT.SETUP, ( /** @type {Player[]} */ players) => {
+      players.forEach((player) => {
+        try {
+          this.playerIDToClientMap.get(player.id).clientData.ws.send(JSON.stringify({
+            type: "GAME_EVENT.SETUP",
+            cards: player.cards.map((card) => cardToObj(card))
+          }));
+        } catch (e) {
+          console.error(e);
+        }
+      });
+      this.game.playerStartTurn();
+    });
+    this.game.emitter.on(GAME_EVENT.PLAYER_TURN, (player) => {
+      this.sendToAllClients(JSON.stringify({
+        type: "GAME_EVENT.PLAYER_TURN",
+        player: player.id
+      }));
+    });
+    this.game.emitter.on(GAME_EVENT.PLAYER_PROPOSE_HAND, ({ player, /** @type {PlayerCustomHand}*/ proposedHand }) => {
+      this.sendToAllClients(JSON.stringify({
+        type: "GAME_EVENT.PLAYER_PROPOSE_HAND",
+        player: player.id,
+        proposedHand: proposedHand.cards.map((card) => cardToObj(card)),
+      }));
+      this.game.playerStartTurn();
+    });
+    this.game.emitter.on(GAME_EVENT.REVEAL, ({ loser, winner }) => {
+      this.sendToAllClients(JSON.stringify({
+        type: "GAME_EVENT.REVEAL",
+        playersCards: Array.from(this.playerIDToClientMap.values())
+                        .map((client) => client.player)
+                        .reduce((acc, curr) => Object.assign(acc, { [curr.id]: curr.cards.map((card) => cardToObj(card)) }), {}),
+        loser: loser.id,
+        winner: winner.id,
+      }));
+      this.game.startNextRoundOrEndGame();
+    });
+    this.game.emitter.on(GAME_EVENT.GAME_OVER, (winner) => {
+      // TODO: (spencer) Verify no memory leak.
+      this.game = null;
+      this.lastWinner = this.playerIDToClientMap.get(winner.id).clientData.clientID;
+      this.sendToAllClients(JSON.stringify({
+        type: "GAME_EVENT.GAME_OVER",
+        winner: winner.id,
+      }));
+    });
+  }
+
+  sendToAllClients(data) {
+    Array.from(this.playerIDToClientMap.values()).map((client) => client.clientData).forEach((client) => {
+      try {
+        client.ws.send(data);
+      } catch (e) {
+        console.error(e);
+      }
+    });
   }
 }
 
@@ -82,4 +148,12 @@ function shuffleArray(array) {
       const j = Math.floor(Math.random() * (i + 1));
       [array[i], array[j]] = [array[j], array[i]];
   }
+}
+
+/**
+ *
+ * @param {Card} card
+ */
+function cardToObj(card) {
+  return { value: card.value, suit: card.suit };
 }

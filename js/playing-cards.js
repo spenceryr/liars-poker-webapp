@@ -23,16 +23,15 @@ export class PlayingCards {
     let allPlayerCards = [];
     let numCardsInPlay = this.cardsInPlay.length;
     let cardsInPlayCopy = [...this.cardsInPlay];
-    for (let numCards in numCardsPerPlayer) {
+    return numCardsPerPlayer.map((numCards) => {
       let playerCards = [];
       for (let i = 0; i < numCards; i++) {
         let index = Math.floor(Math.random() * (numCardsInPlay - i));
         playerCards.push(cardsInPlayCopy[index]);
         cardsInPlayCopy.splice(index, 1);
       }
-      allPlayerCards.push(playerCards);
-    }
-    return allPlayerCards;
+      return playerCards;
+    });
   }
 
   /**

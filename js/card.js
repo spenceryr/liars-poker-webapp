@@ -2,9 +2,9 @@ export class Card {
   /**
    *
    * @param {number} value
-   * @param {string} suit
+   * @param {string?} suit
    */
-  constructor(value, suit) {
+  constructor(value, suit = null) {
     this.value = value;
     this.suit = suit;
   }
