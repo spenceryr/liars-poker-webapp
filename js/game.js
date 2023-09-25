@@ -16,7 +16,8 @@ export const GAME_EVENT = {
 };
 
 export class Game {
-  static get PLAYERS_MAX() { return 6; }
+  static get MAX_PLAYERS() { return 6; }
+  static get MIN_PLAYERS() { return 2; }
 
   /**
    *
@@ -40,7 +41,7 @@ export class Game {
     this.calledPlayer = null;
     /** @type {PlayerCustomHand} */
     this.lastHand = null;
-    this.stateMachine = new GameStateMachine(this);
+    this.stateMachine = new GameStateMachine();
     this.stateMachine.emitter.on("state_change", this.handleStateChange);
     this.emitter = new EventEmitter();
   }
@@ -202,7 +203,8 @@ class GameStateMachine {
         transitions: GameStateMachine.VALID_TRANSITIONS[state],
       };
     }
-    this.stateMachine = new StateMachine(states);
+    /** @type {StateMachine} */
+    this.stateMachine = new StateMachine(states, GameStateMachine.GAME_STATES.NOT_STARTED);
     this.emitter = this.stateMachine.emitter;
   }
 

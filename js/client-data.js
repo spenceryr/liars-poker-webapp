@@ -16,6 +16,8 @@ export class ClientData {
     /** @type {WebSocket} */
     this.ws = ws;
     this.lobbyID = null;
+    /** @type {import("./player").Player} */
+    this.player = null;
     this.stateMachine = new ClientStateMachine();
     this.stateMachine.emitter.on("state_change", this.handleStateChange);
   }
@@ -35,11 +37,11 @@ export class ClientData {
   }
 
   get connected() {
-    return this.ws.readyState == WebSocket.OPEN;
+    return this.ws.readyState === WebSocket.OPEN;
   }
 
   get disconnected() {
-    return this.ws.readyState == WebSocket.CLOSED;
+    return this.ws.readyState === WebSocket.CLOSED;
   }
 }
 
@@ -73,5 +75,37 @@ class ClientStateMachine {
     t[CLIENT_STATES.END_GAME] = [CLIENT_STATES.IN_LOBBY, CLIENT_STATES.NOT_IN_LOBBY];
     return t;
   })();
+}
+
+export class ClientDataStore {
+  /** @type {Map<ClientID, ClientData>} */
+  static clientMapping = new Map();
+
+  /**
+   *
+   * @param {ClientID} clientID
+   * @param {ClientData} clientData
+   */
+  static set(clientID, clientData) {
+    this.clientMapping.set(clientID, clientData)
+  }
+
+  /**
+   *
+   * @param {ClientID} clientID
+   * @returns {boolean}
+   */
+  static delete(clientID) {
+    return this.clientMapping.delete(clientID);
+  }
+
+  /**
+   *
+   * @param {ClientID} clientID
+   * @returns {ClientData | undefined}
+   */
+  static get(clientID) {
+    return this.clientMapping.get(clientID);
+  }
 }
 

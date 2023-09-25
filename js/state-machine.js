@@ -3,11 +3,11 @@ import { EventEmitter } from "events";
 
 export class StateMachine {
   /**
-   * @typedef {{transitions: string}} State
+   * @typedef {} State
    */
   /**
    *
-   * @param {Object.<string, State>} states
+   * @param {Object.<string, {transitions: string}>} states
    * @param {string} initialState
    */
   constructor(states, initialState) {
