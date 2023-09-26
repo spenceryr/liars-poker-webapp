@@ -1,3 +1,4 @@
+"use strict";
 import { assert } from "console";
 import { EventEmitter } from "events";
 

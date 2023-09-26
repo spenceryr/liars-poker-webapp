@@ -5,7 +5,8 @@ import { createServer } from "https";
 import { readFileSync } from "fs";
 import express from "express";
 import session from "express-session";
-const FileStore = require('session-file-store')(session)
+import { default as _FileStore } from "session-file-store";
+const FileStore = _FileStore(session)
 import { rateLimit } from 'express-rate-limit';
 
 var SERVER_KEY_PATH = "./server.key";
@@ -46,6 +47,7 @@ function createWSServer(httpsServer, sessionRouter) {
       const client = authenticate(request);
       if (!client) {
         console.error("No client!");
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
         socket.destroy;
         return;
       }
@@ -57,16 +59,13 @@ function createWSServer(httpsServer, sessionRouter) {
   });
 
   wss.on('connection', function connection(/** @type{WebSocket} */ ws, request, clientID) {
-    connections[ws] = ConnectionData(clientID);
-    ws.on('error', console.error);
+    console.log("CONNECTED");
+    ws.on('error', console.error.bind("ERROR"));
     ws.on('message', function message(data) {
-      let connectionData = connections.get(ws);
-      if (connectionData === undefined) {
-        ws.close();
-        return;
-      }
-      if (!connectionData.leakyBucket.fill()) return;
-      processMessage(data);
+      console.log("MESSAGE");
+    });
+    ws.on("open", () => {
+      console.log("OPENED2");
     });
   });
 
@@ -75,13 +74,14 @@ function createWSServer(httpsServer, sessionRouter) {
 
 function expressSetup(sessionRouter) {
   const app = express();
-  app.use(express.static("public"));
+  app.disable('x-powered-by');
   app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
     standardHeaders: 'draft-7', // Set `RateLimit` and `RateLimit-Policy` headers
   }));
   app.use(sessionRouter);
+  app.use(express.static("public"));
   return app;
 }
 

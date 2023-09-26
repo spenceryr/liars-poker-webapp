@@ -1,80 +1,179 @@
+"use strict";
 import { StateMachine } from "./state-machine";
 import { LeakyBucket } from "./leaky-bucket";
+import { LobbyDataStore } from "./lobby";
+import { PlayerCustomHand } from "./player-custom-hand";
+import { Card } from "./card";
 
 /**
  * @typedef {string} ClientID
  */
+
+/**
+ *
+ * @typedef {import("./lobby").LobbyID} LobbyID
+ */
+
 export class ClientData {
   /**
    *
    * @param {ClientID} clientID
-   * @param {WebSocket} ws
    */
-  constructor(clientID, ws) {
+  constructor(clientID) {
     this.leakyBucket = new LeakyBucket(10, 1000);
     this.clientID = clientID;
-    /** @type {WebSocket} */
-    this.ws = ws;
+    /** @type {WebSocket?} */
+    this.ws = null;
+    /** @type {LobbyID?} */
     this.lobbyID = null;
     /** @type {import("./player").Player} */
     this.player = null;
-    this.stateMachine = new ClientStateMachine();
-    this.stateMachine.emitter.on("state_change", this.handleStateChange);
   }
 
-  handleStateChange(nextState) {
-    let CLIENT_STATES = ClientStateMachine.CLIENT_STATES;
-    switch (nextState) {
-      case CLIENT_STATES.NOT_IN_LOBBY:
+  get lobby() {
+    if (!this.lobbyID) return undefined;
+    return LobbyDataStore.get(this.lobbyID);
+  }
+
+  /**
+   *
+   * @param {Array|Number|Object|String|ArrayBuffer|Buffer|DataView|TypedArray} data
+   * @returns
+   */
+  sendMessage(data) {
+    if (!this.isConnected) return;
+    this.ws?.send(data);
+  }
+
+  /**
+   *
+   * @param {WebSocket} ws
+   * @returns {boolean}
+   */
+  connectedToWS(ws) {
+    if (ws.readyState !== ws.OPEN) return false;
+    this.ws = ws;
+    ws.on("close", this.onClose);
+    ws.on("message", this.onMessage);
+    let lobby = this.lobby;
+    if (!lobby) return false;
+    lobby.clientConnected(this);
+    return true;
+  }
+
+  /**
+   *
+   * @param {LobbyID} lobbyID
+   */
+  joinLobby(lobbyID) {
+    if (this.lobbyID === lobbyID) return true;
+    // Leave current lobby.
+    this.leaveLobby();
+    let lobby = LobbyDataStore.get(lobbyID);
+    if (!lobby) return false;
+    if (lobby.clientJoined(this)) this.lobbyID = lobbyID;
+    return this.lobbyID === lobbyID;
+  }
+
+  leaveLobby() {
+    this.lobby?.clientLeft(this.clientID);
+    this.lobbyID = null;
+  }
+
+  /**
+   *
+   * @param {CloseEvent} ev
+   */
+  onClose(ev) {
+    this.lobby?.clientDisconnect(this.clientID);
+  }
+
+  /**
+   *
+   * @param {MessageEvent} ev
+   * @returns
+   */
+  onMessage(ev) {
+    if (!this.leakyBucket.fill()) return;
+    let msg = null;
+    try {
+      msg = JSON.parse(ev.data);
+    } catch (e) {
+      console.error(`Error processing JSON from client ${this.clientID}`);
+      return;
+    }
+    processMsg(msg);
+  }
+
+  processMsg(msg) {
+    let type = msg.type;
+    if (typeof type !== "string") return;
+    let CLIENT_MSGS = ClientData.CLIENT_MSGS;
+    switch (type) {
+      case CLIENT_MSGS.READY_UP: {
+        let lobby = this.lobby;
+        if (!lobby) return;
+        lobby.clientReady(this);
         break;
-      case CLIENT_STATES.IN_LOBBY:
+      }
+      case CLIENT_MSGS.READY_DOWN: {
+        let lobby = this.lobby;
+        if (!lobby) return;
+        lobby.clientUnReady(this);
         break;
-      case CLIENT_STATES.IN_GAME:
+      }
+      case CLIENT_MSGS.RETURN_TO_PRE_GAME_LOBBY: {
+        let lobby = this.lobby;
+        if (!lobby) return;
+        lobby.returnToPreGameLobby();
         break;
-      case CLIENT_STATES.END_GAME:
+      }
+      case CLIENT_MSGS.CALL_PLAYER: {
+        let lobby = this.lobby;
+        if (!lobby) return;
+        let game = lobby.game;
+        if (!game) return;
+        if (!this.player) return;
+        if (!msg.playerID || typeof msg.playerID !== "string") return;
+        game.playerCalled(this.player, msg.playerID);
         break;
+      }
+      case CLIENT_MSGS.PROPOSED_HAND: {
+        let lobby = this.lobby;
+        if (!lobby) return;
+        let game = lobby.game;
+        if (!game) return;
+        if (!this.player) return;
+        if (!msg.proposedHand || !Array.isArray(msg.proposedHand)) return;
+        let cards = [];
+        for (const card of msg.proposedHand) {
+          if (!card.value || typeof card.value !== number) return;
+          cards.push(new Card(card.value));
+        }
+        game.playerProposedHand(this.player, cards);
+        break;
+      }
     }
   }
-
-  get connected() {
-    return this.ws.readyState === WebSocket.OPEN;
+  static CLIENT_MSGS = {
+    PROPOSED_HAND: "PROPOSED_HAND",
+    CALL_PLAYER: "CALL_PLAYER",
+    READY_UP: "READY_UP",
+    READY_DOWN: "READY_DOWN",
+    RETURN_TO_PRE_GAME_LOBBY: "RETURN_TO_PRE_GAME_LOBBY",
   }
 
-  get disconnected() {
-    return this.ws.readyState === WebSocket.CLOSED;
-  }
-}
-
-class ClientStateMachine {
-  constructor() {
-    let states = {};
-    for (const state in CLIENT_STATES) {
-      if (!ClientStateMachine.CLIENT_STATES.hasOwnProperty(state)) return;
-      states[state] = {
-        transitions: ClientStateMachine.VALID_TRANSITIONS[state],
-      };
-    }
-    this.stateMachine = new StateMachine(states);
-    this.emitter = this.stateMachine.emitter;
+  get isConnected() {
+    return this.ws?.readyState === WebSocket.OPEN;
   }
 
-  static CLIENT_STATES = {
-    DISCONNECTED: "DISCONNECTED",
-    NOT_IN_LOBBY: "NOT_IN_LOBBY",
-    IN_LOBBY: "IN_LOBBY",
-    IN_GAME: "IN_GAME",
-    END_GAME: "END_GAME",
-  };
+  get isDisconnected() {
+    return !this.ws || this.ws.readyState === WebSocket.CLOSED;
+  }
 
-  static VALID_TRANSITIONS = (() => {
-    const CLIENT_STATES = this.CLIENT_STATES;
-    let t = {};
-    t[CLIENT_STATES.NOT_IN_LOBBY] = [CLIENT_STATES.IN_LOBBY];
-    t[CLIENT_STATES.IN_LOBBY] = [CLIENT_STATES.IN_GAME, CLIENT_STATES.NOT_IN_LOBBY];
-    t[CLIENT_STATES.IN_GAME] = [CLIENT_STATES.END_GAME, CLIENT_STATES.NOT_IN_LOBBY];
-    t[CLIENT_STATES.END_GAME] = [CLIENT_STATES.IN_LOBBY, CLIENT_STATES.NOT_IN_LOBBY];
-    return t;
-  })();
+  get isDisconnecting() {
+    return this.ws?.readyState === WebSocket.CLOSING;
+  }
 }
 
 export class ClientDataStore {

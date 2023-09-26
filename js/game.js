@@ -1,3 +1,4 @@
+"use strict";
 import { StateMachine } from "./state-machine";
 import { Player } from "./player";
 import EventEmitter from "events";
@@ -5,14 +6,12 @@ import { PlayingCards } from "./playing-cards";
 import { PlayerCustomHand } from "./player-custom-hand";
 import { Card } from "./card";
 
-let gameEventID = 0;
-
 export const GAME_EVENT = {
-  SETUP: gameEventID++,
-  PLAYER_TURN: gameEventID++,
-  PLAYER_PROPOSE_HAND: gameEventID++,
-  REVEAL: gameEventID++,
-  GAME_OVER: gameEventID++,
+  SETUP: "SETUP",
+  PLAYER_TURN: "PLAYER_TURN",
+  PLAYER_PROPOSE_HAND: "PLAYER_PROPOSE_HAND",
+  REVEAL: "REVEAL",
+  GAME_OVER: "GAME_OVER",
 };
 
 export class Game {
@@ -165,12 +164,14 @@ export class Game {
   /**
    *
    * @param {Player} callingPlayer
-   * @param {Player} calledPlayer
+   * @param {import("./player").PlayerID} calledPlayerID
    * @returns
    */
-  playerCalled(callingPlayer, calledPlayer) {
+  playerCalled(callingPlayer, calledPlayerID) {
     if (!this.stateMachine.verifyState(GameStateMachine.GAME_STATES.PLAYER_TURN)) return;
-    if(calledPlayer !== this.players[this.playerIndexOffset(-1)]) return;
+    let index = this.players.findIndex((player) => player.playerID === calledPlayerID);
+    if(index !== this.playerIndexOffset(-1)) return;
+    let calledPlayer = this.players[index];
     let callingPlayerIndex = this.getPlayerIndex(callingPlayer);
     if (callingPlayerIndex < 0) return;
     if (callingPlayer === calledPlayer) return;

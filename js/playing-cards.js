@@ -1,3 +1,4 @@
+"use strict";
 import { Card }  from "./card";
 
 export class PlayingCards {
