@@ -1,20 +1,37 @@
 'use strict';
 
 import { WebSocketServer } from "ws";
-import { createServer } from "https";
-import { readFileSync } from "fs";
+import { createServer } from "node:https";
+import { readFileSync } from "node:fs";
 import express from "express";
 import session from "express-session";
 import { default as _FileStore } from "session-file-store";
 const FileStore = _FileStore(session)
-import { rateLimit } from 'express-rate-limit';
+import { rateLimit } from "express-rate-limit";
+import bcrypt from "bcrypt"
+import "dotenv/config"
+import path from "node:path";
+import assert from "node:assert";
+import { randomUUID } from "node:crypto";
 
-var SERVER_KEY_PATH = "./server.key";
-var SERVER_CERT_PATH = "./server.cert";
-var LOBBY_PASSWORD = "lobby_password";
-var SESSION_COOKIE_SECRET = "session_cookie_secret";
-var SESSION_STORE_PATH = "./sessions";
-var SESSION_STORE_SECRET = "session_store_secret";
+/** @type {string} */
+var SERVER_KEY_PATH = process.env.SERVER_KEY_PATH;
+assert(SERVER_KEY_PATH);
+/** @type {string} */
+var SERVER_CERT_PATH = process.env.SERVER_CERT_PATH;
+assert(SERVER_CERT_PATH);
+/** @type {string} */
+var LOBBY_PASSWORD = process.env.LOBBY_PASSWORD;
+assert(LOBBY_PASSWORD);
+/** @type {string} */
+var SESSION_COOKIE_SECRET = process.env.SESSION_COOKIE_SECRET;
+assert(SESSION_COOKIE_SECRET);
+/** @type {string} */
+var SESSION_STORE_PATH = process.env.SESSION_STORE_PATH;
+assert(SESSION_STORE_PATH);
+/** @type {string} */
+var SESSION_STORE_SECRET = process.env.SESSION_STORE_SECRET;
+assert(SESSION_STORE_SECRET);
 
 
 /**
@@ -72,21 +89,71 @@ function createWSServer(httpsServer, sessionRouter) {
   return wss;
 }
 
+/**
+ *
+ * @param {express.RequestHandler} sessionRouter
+ * @returns
+ */
 function expressSetup(sessionRouter) {
   const app = express();
-  app.disable('x-powered-by');
+  app.disable("x-powered-by");
   app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
     standardHeaders: 'draft-7', // Set `RateLimit` and `RateLimit-Policy` headers
   }));
   app.use(sessionRouter);
-  app.use(express.static("public"));
+  app.use(express.urlencoded({extended: "false"}));
+  app.use(express.json());
+  // TODO: (spencer) Multi-lobby support by including the lobby code in the request.
+  app.post("/joinlobby", async function verifyJoinLobby(req, res) {
+    if (req.session.clientID) {
+      res.redirect("/");
+      return;
+    }
+    if (typeof req.lobbyPassword !== "string") {
+      res.sendStatus(401);
+      return;
+    }
+    try {
+      let valid = await bcrypt.compare(req.lobbyPassword, LOBBY_PASSWORD);
+      if (!valid) throw Error();
+    } catch (_) {
+      res.sendStatus(401);
+      return;
+    }
+    req.session.clientID = randomUUID();
+    res.sendStatus(200);
+  });
+  let staticOptions = {
+    redirect: false,
+    dotfiles: "deny"
+  };
+  app.get("/", function isValidated(req, res, next) {
+    if (authenticate(req)) {
+      return next("route");
+    }
+  } , express.static(path.join(__dirname, "public"), staticOptions));
+  app.use("/",
+    function validateRequest (req, res, next) {
+      if (!req.session.clientID) {
+        res.sendStatus(403);
+        return;
+      }
+    },
+    express.static(path.join(__dirname, "public", "authenticated"), staticOptions)
+  );
   return app;
 }
 
-function authenticate() {
-  return true;
+/**
+ *
+ * @param {express.Request} req
+ * @returns
+ */
+function authenticate(req) {
+  if (req.session.clientID) return true;
+  return false;
 }
 
 function main() {
