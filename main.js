@@ -1,5 +1,6 @@
 'use strict';
 
+import https from "https"
 import { WebSocketServer } from "ws";
 import { createServer } from "node:https";
 import { readFileSync } from "node:fs";
@@ -13,6 +14,9 @@ import "dotenv/config"
 import path from "node:path";
 import assert from "node:assert";
 import { randomUUID } from "node:crypto";
+import nunjucks from "nunjucks"
+import { ClientData, ClientDataStore } from "./js/client-data";
+import { LobbyDataStore } from "./js/lobby";
 
 /** @type {string} */
 var SERVER_KEY_PATH = process.env.SERVER_KEY_PATH;
@@ -21,8 +25,8 @@ assert(SERVER_KEY_PATH);
 var SERVER_CERT_PATH = process.env.SERVER_CERT_PATH;
 assert(SERVER_CERT_PATH);
 /** @type {string} */
-var LOBBY_PASSWORD = process.env.LOBBY_PASSWORD;
-assert(LOBBY_PASSWORD);
+var SITE_PASSWORD = process.env.SITE_PASSWORD;
+assert(SITE_PASSWORD);
 /** @type {string} */
 var SESSION_COOKIE_SECRET = process.env.SESSION_COOKIE_SECRET;
 assert(SESSION_COOKIE_SECRET);
@@ -61,7 +65,7 @@ function createWSServer(httpsServer, sessionRouter) {
   const wss = new WebSocketServer({ clientTracking: false, noServer: true });
   httpsServer.on('upgrade', function upgrade(request, socket, head) {
     sessionRouter(request, {}, () => {
-      const client = authenticate(request);
+      const client = getClientFromReq(request);
       if (!client) {
         console.error("No client!");
         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
@@ -75,16 +79,17 @@ function createWSServer(httpsServer, sessionRouter) {
     });
   });
 
-  wss.on('connection', function connection(/** @type{WebSocket} */ ws, request, clientID) {
-    console.log("CONNECTED");
-    ws.on('error', console.error.bind("ERROR"));
-    ws.on('message', function message(data) {
-      console.log("MESSAGE");
+  wss.on('connection',
+    /**
+     *
+     * @param {WebSocket} ws
+     * @param {import("http".IncomingMessage)} request
+     * @param {ClientData} client
+     */
+    function connection(ws, request, client) {
+      let result = client.connectedToWS(ws);
+      assert(result);
     });
-    ws.on("open", () => {
-      console.log("OPENED2");
-    });
-  });
 
   return wss;
 }
@@ -96,6 +101,7 @@ function createWSServer(httpsServer, sessionRouter) {
  */
 function expressSetup(sessionRouter) {
   const app = express();
+  nunjucks.configure(path.join(__dirname, "views"), { autoescape: true, express: app });
   app.disable("x-powered-by");
   app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -105,43 +111,105 @@ function expressSetup(sessionRouter) {
   app.use(sessionRouter);
   app.use(express.urlencoded({extended: "false"}));
   app.use(express.json());
-  // TODO: (spencer) Multi-lobby support by including the lobby code in the request.
-  app.post("/joinlobby", async function verifyJoinLobby(req, res) {
-    if (req.session.clientID) {
-      res.redirect("/");
-      return;
-    }
-    if (typeof req.lobbyPassword !== "string") {
-      res.sendStatus(401);
-      return;
-    }
-    try {
-      let valid = await bcrypt.compare(req.lobbyPassword, LOBBY_PASSWORD);
-      if (!valid) throw Error();
-    } catch (_) {
-      res.sendStatus(401);
-      return;
-    }
-    req.session.clientID = randomUUID();
-    res.sendStatus(200);
+
+  app.use(function setClient(req, res, next) {
+    if (req.session.clientID) req.client = ClientDataStore.get(req.session.clientID);
+    next();
   });
-  let staticOptions = {
-    redirect: false,
-    dotfiles: "deny"
-  };
-  app.get("/", function isValidated(req, res, next) {
-    if (authenticate(req)) {
-      return next("route");
+
+  /**
+   *
+   * @param {string?} [redirect=/]
+   * @returns {express.Router}
+   */
+  function authRequired(redirect = "/") {
+    if (redirect) assert(typeof redirect === "string");
+    if (redirect === "") redirect = "/";
+    if (!redirect) redirect = null;
+    return (req, res, next) => {
+      if (req.client) next();
+      else if (redirect) res.redirect(redirect);
+      else res.sendStatus(401);
     }
-  } , express.static(path.join(__dirname, "public"), staticOptions));
-  app.use("/",
-    function validateRequest (req, res, next) {
-      if (!req.session.clientID) {
-        res.sendStatus(403);
-        return;
-      }
-    },
-    express.static(path.join(__dirname, "public", "authenticated"), staticOptions)
+  }
+  /**
+   *
+   * @param {express.Router} successCB
+   * @param {express.Router?} [failureCB=null]
+   * @returns {express.Router}
+   */
+  function isAuthenticated(successCB, failureCB) {
+    return (req, res, next) => {
+      if (req.client) return successCB(req, res, next);
+      else if (failureCB) return failureCB(req, res, next);
+      else return next();
+    };
+  }
+
+  /**
+   *
+   * @returns {express.Router}
+   */
+  function restoreClientSession() {
+    return (req, res, next) => {
+      assert(req.client);
+      if (req.client.lobbyID) res.redirect("/lobby")
+      else res.redirect("/lobby-list")
+    };
+  }
+
+  app.use("/js",
+    express.static(path.join(__dirname, "public", "js"), { redirect: false, index: false, dotfiles: "deny" })
+  );
+
+  app.use("/auth/js",
+    authRequired(null),
+    express.static(path.join(__dirname, "public", "auth", "js"), { redirect: false, index: false, dotfiles: "deny" })
+  );
+
+  app.get("/",
+    isAuthenticated(restoreClientSession()),
+    (req, res) => {
+      res.render("index.njk");
+    }
+  );
+
+  app.post("/login",
+    isAuthenticated(restoreClientSession()),
+    async function verifyLogin(req, res) {
+    let password = req.body.password;
+    if (!password || typeof password !== "string") return res.sendStatus(400);
+    try {
+      let result = await bcrypt.compare(password, SITE_PASSWORD);
+      if (!result) throw Error();
+    } catch (_) {
+      return res.status(200).json({ result: "incorrect" })
+    }
+    let clientID = randomUUID();
+    let client = new ClientData(clientID);
+    ClientDataStore.set(clientID, client);
+    req.session.clientID = clientID;
+    res.status(200).json({ result: "success" });
+  });
+
+  let authRouter = express.Router();
+  app.use(authRouter);
+  authRouter.use(authRequired());
+
+  authRouter.get("/lobby-list",
+    function serveLobbiesList(req, res, next) {
+      res.render("lobby-list", { lobbies: Array.from(LobbyDataStore.entries()) });
+    }
+  );
+
+  // TODO: (spencer) Use connect-ensure-login once multiple lobbies are supported.
+  authRouter.get("/lobby/:lobbyID",
+    function goToLobby(req, res, next) {
+      let lobbyID = req.params.lobbyID;
+      // TODO: (spencer) Currently always joins same lobby. Add multi-lobby support.
+      if (!req.client.joinLobby(0 /* lobbyID */)) return res.redirect("/lobby-list");
+      res.render("lobby", { lobby: client.lobby });
+    }
   );
   return app;
 }
@@ -149,20 +217,22 @@ function expressSetup(sessionRouter) {
 /**
  *
  * @param {express.Request} req
- * @returns
+ * @returns {ClientData?}
  */
-function authenticate(req) {
-  if (req.session.clientID) return true;
-  return false;
+function getClientFromReq(req) {
+  let clientID = req.session.clientID;
+  if (!clientID) return null;
+  return ClientDataStore.get(clientID);
 }
 
 function main() {
+  // TODO: (spencer) Harden cookie validation to prevent stolen cookies.
   let sessionRouter = session({
-    cookie: { path: '/', httpOnly: true, secure: false, sameSite: true, maxAge: 86400000 },
+    cookie: { path: '/', httpOnly: true, secure: true, sameSite: true, maxAge: 24 * 60 * 60 },
     saveUninitialized: false,
     store: new FileStore({
       path: SESSION_STORE_PATH,
-      ttl: 86400,
+      ttl: 24 * 60 * 60,
       reapAsync: true,
       reapSyncFallback: true,
       secret: SESSION_STORE_SECRET

@@ -433,4 +433,8 @@ export class LobbyDataStore {
   static get(lobbyID) {
     return this.lobbyMapping.get(lobbyID);
   }
+
+  static entries() {
+    return this.lobbyMapping.entries();
+  }
 }
