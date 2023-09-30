@@ -1,5 +1,5 @@
 "use strict";
-import { Card }  from "./card";
+import { Card }  from "./card.js";
 
 export class PlayingCards {
   constructor(numCards) {

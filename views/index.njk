@@ -3,52 +3,50 @@
 <head>
   <meta charset="utf-8" />
   <title>Liar's Poker</title>
-  <style>
-    * {
-      padding: 0;
-      margin: 0;
-    }
-    canvas {
-      background: #eee;
-      display: block;
-      margin: 0 auto;
-    }
-  </style>
 </head>
 
 <body>
+  <h1>Liar's Poker For Da Boys</h1>
   <script>
     window.addEventListener("DOMContentLoaded", () => {
-      // Create WebSocket connection.
-      console.log(`Creating ws at wss://${location.host}`);
-      const socket = new WebSocket(`wss://${location.host}`);
-
-      // Connection opened
-      socket.addEventListener("open", (event) => {
-        socket.send("Hello Server!");
-      });
-
-      socket.addEventListener("error", (event) => {
-        console.error(`Websocket error: ${JSON.stringify(event, ["message", "arguments", "type", "name"])}`);
-      });
-
-      // Listen for messages
-      socket.addEventListener("message", (event) => {
-        console.log("Message from server ", event.data);
+      document.getElementById("pwform").addEventListener("submit", (e) => {
+        e.preventDefault();
+        let formData = new FormData(e.target);
+        let body = {};
+        for (const [key, value] of formData) {
+          body[key] = value;
+        }
+        let result = "";
+        fetch("/login", {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        })
+          .catch((e) => result = "Error occurred with login")
+          .then((res) => {
+            if (res.ok) return res;
+            throw Error(res.status);
+          })
+          .catch((status) => result = "Invalid password entered")
+          .then((res) => res.json())
+          .catch(() => console.error("Failed to read response"))
+          .then((data) => {
+            if (data?.result === "incorrect") result = "Incorrect password";
+          })
+          .finally(() => {
+            document.getElementById("login-result").innerHTML = result;
+          })
+        return false;
       });
     });
   </script>
-  <h1>Liar's Poker</h1>
-  <canvas id="gameCanvas" width="480" height="320"></canvas>
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-
-    ctx.beginPath();
-    ctx.rect(20, 40, 50, 50);
-    ctx.fillStyle = "#FF0000";
-    ctx.fill();
-    ctx.closePath();
-
-  </script>
+  <form id="pwform">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required autocomplete="on" />
+    <input type="submit" value="Submit" />
+  </form>
+  <br>
+  <p id="login-result"></p>
 </body>

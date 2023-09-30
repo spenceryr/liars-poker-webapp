@@ -10,6 +10,10 @@ export class Card {
     this.suit = suit;
   }
 
+  toObj() {
+    return { value: this.value, suit: this.suit };
+  }
+
   static get MAX_VALUE() { return 14; }
   static get MIN_VALUE() { return 2; }
 }

@@ -1,15 +1,15 @@
 "use strict";
-import { assert } from "console";
+import assert from "node:assert";
 import { EventEmitter } from "events";
 
 export class StateMachine {
   /**
-   * @typedef {} State
+   * @typedef {string} State
    */
   /**
    *
-   * @param {Object.<string, {transitions: string}>} states
-   * @param {string} initialState
+   * @param {Object.<State, {transitions: State}>} states
+   * @param {State} initialState
    */
   constructor(states, initialState) {
     this.states = states;

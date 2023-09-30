@@ -1,10 +1,9 @@
 "use strict";
-import { Player } from "./player";
-import { ClientData, ClientDataStore } from "./client-data";
-import { GAME_EVENT, Game } from "./game";
-import { Card } from "./card";
-import { PlayerCustomHand } from "./player-custom-hand";
-import { StateMachine } from "./state-machine";
+import { Player } from "./player.js";
+import { ClientData, ClientDataStore } from "./client-data.js";
+import { GAME_EVENT, Game } from "./game.js";
+import { PlayerCustomHand } from "./player-custom-hand.js";
+import { StateMachine } from "./state-machine.js";
 
 /**
  * @typedef {import("./client-data").ClientID} ClientID
@@ -49,6 +48,16 @@ export class Lobby {
     return Array.from(this.clientIDs.entries()).map((clientID) => ClientDataStore.get(clientID)).filter((client) => !!client);
   }
 
+  getLobbySnapshot() {
+    // TODO: (spencer) Create class.
+    return {
+      player_connections: this.clients.map((client) =>
+        [client.player.playerID, { connected: client.isConnected, disconnected: client.isDisconnected }]),
+      last_winner: this.lastWinner,
+      lobby_state: this.stateMachine.state
+    }
+  }
+
   /**
    *
    * @param {ClientData} client
@@ -59,6 +68,7 @@ export class Lobby {
     if (!this.acceptingNewPlayers) return false;
     if (this.destroyTimeout) clearTimeout(this.destroyTimeout);
     client.player = new Player(client.clientID);
+    client.lobbyID = this.lobbyID;
     this.sendToAllClients(JSON.stringify({
       type: "LOBBY_EVENT.PLAYER_JOINED",
       player: client.player.playerID,
@@ -81,6 +91,7 @@ export class Lobby {
     if (!this.clientIDs.has(client.clientID)) return;
     this.clientIDs.delete(client.clientID);
     client.player = null;
+    client.lobbyID = null;
     if (client.clientID === this.lastWinner) this.lastWinner = null;
     let timeout = this.clientTimeouts.get(client.clientID);
     if (timeout) {
@@ -106,7 +117,7 @@ export class Lobby {
     for (const timeout of this.clientTimeouts) clearTimeout(timeout);
     this.stopListenForGameEvents();
     this.stateMachine.emitter.removeAllListeners();
-    LobbyDataStore.delete(this.lobbyID);
+    LobbyStore.delete(this.lobbyID);
   }
 
   /**
@@ -273,7 +284,7 @@ export class Lobby {
         try {
           ClientDataStore.get(player.clientID).sendMessage(JSON.stringify({
             type: "GAME_EVENT.SETUP",
-            cards: player.cards.map((card) => cardToObj(card))
+            cards: player.cards.map((card) => card.toObj())
           }));
         } catch (e) {
           console.error(e);
@@ -299,7 +310,7 @@ export class Lobby {
       this.sendToAllClients(JSON.stringify({
         type: "GAME_EVENT.PLAYER_PROPOSE_HAND",
         player: player.playerID,
-        proposedHand: proposedHand.cards.map((card) => cardToObj(card)),
+        proposedHand: proposedHand.cards.map((card) => card.toObj()),
       }));
       this.game.playerStartTurn();
     },
@@ -313,7 +324,7 @@ export class Lobby {
         playersCards: this.clients
           .map((client) => client.player)
           .reduce(
-            (acc, curr) => Object.assign(acc, { [curr.playerID]: curr.cards.map((card) => cardToObj(card)) }),
+            (acc, curr) => Object.assign(acc, { [curr.playerID]: curr.cards.map((card) => card.toObj()) }),
             {}
           ),
         loser: loser.playerID,
@@ -385,6 +396,8 @@ class LobbyStateMachine {
   verifyState(...states) {
     this.stateMachine.verifyState(...states);
   }
+
+  get state() { return this.stateMachine.state; }
 }
 
 
@@ -395,15 +408,7 @@ function shuffleArray(array) {
   }
 }
 
-/**
- *
- * @param {Card} card
- */
-function cardToObj(card) {
-  return { value: card.value, suit: card.suit };
-}
-
-export class LobbyDataStore {
+export class LobbyStore {
   /** @type {Map<LobbyID, Lobby>} */
   static lobbyMapping = new Map();
 
@@ -436,5 +441,9 @@ export class LobbyDataStore {
 
   static entries() {
     return this.lobbyMapping.entries();
+  }
+
+  static size() {
+    return this.lobbyMapping.size;
   }
 }

@@ -1,9 +1,8 @@
 "use strict";
-import { StateMachine } from "./state-machine";
-import { LeakyBucket } from "./leaky-bucket";
-import { LobbyDataStore } from "./lobby";
-import { PlayerCustomHand } from "./player-custom-hand";
-import { Card } from "./card";
+import { LeakyBucket } from "./leaky-bucket.js";
+import { LobbyStore } from "./lobby.js";
+import { Card } from "./card.js";
+import assert from "node:assert";
 
 /**
  * @typedef {string} ClientID
@@ -32,7 +31,7 @@ export class ClientData {
 
   get lobby() {
     if (!this.lobbyID) return undefined;
-    return LobbyDataStore.get(this.lobbyID);
+    return LobbyStore.get(this.lobbyID);
   }
 
   /**
@@ -57,7 +56,15 @@ export class ClientData {
     ws.on("message", this.onMessage);
     let lobby = this.lobby;
     if (!lobby) return false;
-    lobby.clientConnected(this);
+    assert(lobby.clientConnected(this));
+    ws.send(JSON.stringify({
+      type: "CLIENT_EVENT.CONNECTION_ACK",
+      snapshot: {
+        player_id: this.player.playerID,
+        lobby: lobby.stateMachine.state,
+        game: (this.lobby.inGame && this.lobby.game?.getGameSnapshot(this.player)) || null
+      }
+    }));
     return true;
   }
 
@@ -69,15 +76,13 @@ export class ClientData {
     if (this.lobbyID === lobbyID) return true;
     // Leave current lobby.
     this.leaveLobby();
-    let lobby = LobbyDataStore.get(lobbyID);
+    let lobby = LobbyStore.get(lobbyID);
     if (!lobby) return false;
-    if (lobby.clientJoined(this)) this.lobbyID = lobbyID;
-    return this.lobbyID === lobbyID;
+    return lobby.clientJoined(this);
   }
 
   leaveLobby() {
     this.lobby?.clientLeft(this.clientID);
-    this.lobbyID = null;
   }
 
   /**

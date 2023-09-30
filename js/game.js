@@ -1,10 +1,9 @@
 "use strict";
-import { StateMachine } from "./state-machine";
-import { Player } from "./player";
 import EventEmitter from "events";
-import { PlayingCards } from "./playing-cards";
-import { PlayerCustomHand } from "./player-custom-hand";
-import { Card } from "./card";
+import { StateMachine } from "./state-machine.js";
+import { Player } from "./player.js";
+import { PlayingCards } from "./playing-cards.js";
+import { PlayerCustomHand } from "./player-custom-hand.js";
 
 export const GAME_EVENT = {
   SETUP: "SETUP",
@@ -38,11 +37,29 @@ export class Game {
     this.callingPlayer = null;
     /** @type {Player} */
     this.calledPlayer = null;
-    /** @type {PlayerCustomHand} */
+    /** @type {PlayerCustomHand?} */
     this.lastHand = null;
     this.stateMachine = new GameStateMachine();
     this.stateMachine.emitter.on("state_change", this.handleStateChange);
     this.emitter = new EventEmitter();
+  }
+
+  /**
+   *
+   * @param {Player} player
+   * @returns
+   */
+  getGameSnapshot(player) {
+    // TODO: (spencer) Create class.
+    return {
+      game_state: this.stateMachine.state,
+      current_player_turn: this.players[this.currentPlayerIndexTurn].playerID,
+      calling_player: this.callingPlayer,
+      called_player: this.calledPlayer,
+      last_hand: this.lastHand?.cards.map((card) => card.toObj()),
+      num_cards_in_play: this.numCardsInPlay,
+      this_player_hand: player.cards.map((card) => card.toObj())
+    }
   }
 
   handleStateChange(newState) {
@@ -237,4 +254,6 @@ class GameStateMachine {
   verifyState(...states) {
     this.stateMachine.verifyState(...states);
   }
+
+  get state() { return this.stateMachine.state; }
 }

@@ -15,8 +15,12 @@ import path from "node:path";
 import assert from "node:assert";
 import { randomUUID } from "node:crypto";
 import nunjucks from "nunjucks"
-import { ClientData, ClientDataStore } from "./js/client-data";
-import { LobbyDataStore } from "./js/lobby";
+import { ClientData, ClientDataStore } from "./js/client-data.js";
+import { Lobby, LobbyStore } from "./js/lobby.js";
+
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /** @type {string} */
 var SERVER_KEY_PATH = process.env.SERVER_KEY_PATH;
@@ -110,10 +114,10 @@ function expressSetup(sessionRouter) {
   }));
   app.use(sessionRouter);
   app.use(express.urlencoded({extended: "false"}));
-  app.use(express.json());
+  app.use(express.json(), (err, req, res, next) => { res.sendStatus(400) });
 
   app.use(function setClient(req, res, next) {
-    if (req.session.clientID) req.client = ClientDataStore.get(req.session.clientID);
+    if (req.session.liarsClientID) req.liarsClient = ClientDataStore.get(req.session.liarsClientID);
     next();
   });
 
@@ -127,7 +131,7 @@ function expressSetup(sessionRouter) {
     if (redirect === "") redirect = "/";
     if (!redirect) redirect = null;
     return (req, res, next) => {
-      if (req.client) next();
+      if (req.liarsClient) next();
       else if (redirect) res.redirect(redirect);
       else res.sendStatus(401);
     }
@@ -140,7 +144,7 @@ function expressSetup(sessionRouter) {
    */
   function isAuthenticated(successCB, failureCB) {
     return (req, res, next) => {
-      if (req.client) return successCB(req, res, next);
+      if (req.liarsClient) return successCB(req, res, next);
       else if (failureCB) return failureCB(req, res, next);
       else return next();
     };
@@ -152,9 +156,20 @@ function expressSetup(sessionRouter) {
    */
   function restoreClientSession() {
     return (req, res, next) => {
-      assert(req.client);
-      if (req.client.lobbyID) res.redirect("/lobby")
+      assert(req.liarsClient);
+      if (req.liarsClient.lobbyID) res.redirect(`/lobby/${req.liarsClient.lobbyID}`)
       else res.redirect("/lobby-list")
+    };
+  }
+
+  /**
+   *
+   * @returns {express.ErrorRequestHandler}
+   */
+  function handleRenderError() {
+    return (err, req, res, next) => {
+      console.error(`Render error: ${err}`);
+      res.sendStatus(500);
     };
   }
 
@@ -171,7 +186,8 @@ function expressSetup(sessionRouter) {
     isAuthenticated(restoreClientSession()),
     (req, res) => {
       res.render("index.njk");
-    }
+    },
+    handleRenderError()
   );
 
   app.post("/login",
@@ -188,8 +204,8 @@ function expressSetup(sessionRouter) {
     let clientID = randomUUID();
     let client = new ClientData(clientID);
     ClientDataStore.set(clientID, client);
-    req.session.clientID = clientID;
-    res.status(200).json({ result: "success" });
+    req.session.liarsClientID = clientID;
+    res.redirect("/lobby-list");
   });
 
   let authRouter = express.Router();
@@ -198,8 +214,9 @@ function expressSetup(sessionRouter) {
 
   authRouter.get("/lobby-list",
     function serveLobbiesList(req, res, next) {
-      res.render("lobby-list", { lobbies: Array.from(LobbyDataStore.entries()) });
-    }
+      res.render("lobby-list.njk", { lobbies: Array.from(LobbyStore.entries()) });
+    },
+    handleRenderError()
   );
 
   // TODO: (spencer) Use connect-ensure-login once multiple lobbies are supported.
@@ -207,20 +224,22 @@ function expressSetup(sessionRouter) {
     function goToLobby(req, res, next) {
       let lobbyID = req.params.lobbyID;
       // TODO: (spencer) Currently always joins same lobby. Add multi-lobby support.
-      if (!req.client.joinLobby(0 /* lobbyID */)) return res.redirect("/lobby-list");
-      res.render("lobby", { lobby: client.lobby });
-    }
+      if (LobbyStore.size <= 0) LobbyStore.set(0, new Lobby(0, null));
+      if (!req.liarsClient.joinLobby(0 /* lobbyID */)) return res.redirect("/lobby-list");
+      res.render("lobby.njk", { lobby: client.lobby });
+    },
+    handleRenderError()
   );
   return app;
 }
 
 /**
  *
- * @param {express.Request} req
+ * @param {import("http".IncomingMessage)} req
  * @returns {ClientData?}
  */
 function getClientFromReq(req) {
-  let clientID = req.session.clientID;
+  let clientID = req.session.liarsClientID;
   if (!clientID) return null;
   return ClientDataStore.get(clientID);
 }
@@ -244,6 +263,7 @@ function main() {
   const app = expressSetup(sessionRouter);
   const httpsServer = createHTTPSServer(app);
   const wss = createWSServer(httpsServer, sessionRouter);
+  // TODO: (spencer) Currently just have a single lobby. Increase to multi-lobby support later.
 
   httpsServer.listen(8080);
 }
