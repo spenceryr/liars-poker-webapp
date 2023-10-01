@@ -117,7 +117,10 @@ function expressSetup(sessionRouter) {
   app.use(express.json(), (err, req, res, next) => { res.sendStatus(400) });
 
   app.use(function setClient(req, res, next) {
-    if (req.session.liarsClientID) req.liarsClient = ClientDataStore.get(req.session.liarsClientID);
+    if (req.session.liarsClientID) {
+      assert(req.liarsClient === undefined);
+      req.liarsClient = ClientDataStore.get(req.session.liarsClientID);
+    }
     next();
   });
 
@@ -204,8 +207,8 @@ function expressSetup(sessionRouter) {
     let clientID = randomUUID();
     let client = new ClientData(clientID);
     ClientDataStore.set(clientID, client);
+    assert(req.session.liarsClientID === undefined);
     req.session.liarsClientID = clientID;
-    req.liarsClient = client;
     return res.status(200).json({ result: "correct", forward: "/lobby-list" });
   });
 

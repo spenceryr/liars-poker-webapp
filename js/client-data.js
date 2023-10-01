@@ -1,8 +1,9 @@
 "use strict";
+import assert from "node:assert";
+import { WebSocket } from "ws";
 import { LeakyBucket } from "./leaky-bucket.js";
 import { LobbyStore } from "./lobby.js";
 import { Card } from "./card.js";
-import assert from "node:assert";
 
 /**
  * @typedef {string} ClientID
@@ -56,12 +57,11 @@ export class ClientData {
     ws.on("message", this.onMessage);
     let lobby = this.lobby;
     if (!lobby) return false;
-    assert(lobby.clientConnected(this));
     ws.send(JSON.stringify({
       type: "CLIENT_EVENT.CONNECTION_ACK",
       snapshot: {
         player_id: this.player.playerID,
-        lobby: lobby.stateMachine.state,
+        lobby: lobby.getLobbySnapshot(),
         game: (this.lobby.inGame && this.lobby.game?.getGameSnapshot(this.player)) || null
       }
     }));
