@@ -27,7 +27,7 @@ export class StateMachine {
     return false;
   }
 
-  verifyStates(...states) {
-    states.includes(this.state);
+  verifyState(...states) {
+    return states.includes(this.state);
   }
 }

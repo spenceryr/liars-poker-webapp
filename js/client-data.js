@@ -82,7 +82,7 @@ export class ClientData {
   }
 
   leaveLobby() {
-    this.lobby?.clientLeft(this.clientID);
+    this.lobby?.clientLeft(this);
   }
 
   /**
@@ -90,7 +90,7 @@ export class ClientData {
    * @param {CloseEvent} ev
    */
   onClose(ev) {
-    this.lobby?.clientDisconnect(this.clientID);
+    this.lobby?.clientDisconnect(this);
   }
 
   /**

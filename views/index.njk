@@ -16,27 +16,30 @@
         for (const [key, value] of formData) {
           body[key] = value;
         }
-        let result = "";
+        e.target.reset();
         fetch("/login", {
           method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            Accept: "application/json",
+            "Content-Type": "application/json"
           },
           body: JSON.stringify(body)
         })
-          .catch((e) => result = "Error occurred with login")
-          .then((res) => {
-            if (res.ok) return res;
-            throw Error(res.status);
-          })
-          .catch((status) => result = "Invalid password entered")
-          .then((res) => res.json())
-          .catch(() => console.error("Failed to read response"))
-          .then((data) => {
-            if (data?.result === "incorrect") result = "Incorrect password";
-          })
-          .finally(() => {
-            document.getElementById("login-result").innerHTML = result;
+          .then(async (res) => {
+            if (!res.ok) throw Error(res.status);
+            let json = await res.json();
+            if (!json || json.result === "incorrect") return "Incorrect password.";
+            else if (json.result === "correct" && json.forward) {
+              window.location.replace(json.forward);
+              return "";
+            }
+            return "Error occurred with login."
+          }, () => "Error occurred with login.")
+          .catch(() => "Invalid password.")
+          .then((result) => {
+            if (typeof result === "string") {
+              document.getElementById("login-result").innerHTML = result;
+            }
           })
         return false;
       });

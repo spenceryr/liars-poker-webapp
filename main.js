@@ -205,28 +205,43 @@ function expressSetup(sessionRouter) {
     let client = new ClientData(clientID);
     ClientDataStore.set(clientID, client);
     req.session.liarsClientID = clientID;
-    res.redirect("/lobby-list");
+    req.liarsClient = client;
+    return res.status(200).json({ result: "correct", forward: "/lobby-list" });
   });
 
   let authRouter = express.Router();
   app.use(authRouter);
   authRouter.use(authRequired());
 
+  /**
+   *
+   * @returns {express.Router}
+   */
+  function generateLobbyIfNoLobbies() {
+    return (req, res, next) => {
+      // TODO: (spencer) Currently only create one lobby. Eventually add multi-lobby support.
+      if (LobbyStore.size <= 0) LobbyStore.set("0", new Lobby("0", null));
+      next();
+    }
+  }
+
   authRouter.get("/lobby-list",
-    function serveLobbiesList(req, res, next) {
-      res.render("lobby-list.njk", { lobbies: Array.from(LobbyStore.entries()) });
+    // TODO: (spencer) Remove once have multi-lobby support.
+    generateLobbyIfNoLobbies(),
+    function serveLobbiesList(req, res) {
+      res.render("lobby-list.njk", { lobbies: Array.from(LobbyStore.entries()).map(([lobbyID, _]) => lobbyID) });
     },
     handleRenderError()
   );
 
   // TODO: (spencer) Use connect-ensure-login once multiple lobbies are supported.
   authRouter.get("/lobby/:lobbyID",
-    function goToLobby(req, res, next) {
+  // TODO: (spencer) Remove once have multi-lobby support.
+    generateLobbyIfNoLobbies(),
+    function goToLobby(req, res) {
       let lobbyID = req.params.lobbyID;
-      // TODO: (spencer) Currently always joins same lobby. Add multi-lobby support.
-      if (LobbyStore.size <= 0) LobbyStore.set(0, new Lobby(0, null));
-      if (!req.liarsClient.joinLobby(0 /* lobbyID */)) return res.redirect("/lobby-list");
-      res.render("lobby.njk", { lobby: client.lobby });
+      if (!req.liarsClient.joinLobby(lobbyID)) return res.redirect("/lobby-list");
+      res.render("lobby.njk", { lobby: LobbyStore.get(lobbyID) });
     },
     handleRenderError()
   );

@@ -13,7 +13,13 @@ import { StateMachine } from "./state-machine.js";
  * @typedef {string} LobbyID
  */
 
+// TODO: (spencer) Start destroy timeout when lobby created (maybe with longer timeout).
 export class Lobby {
+  /**
+   *
+   * @param {LobbyID} lobbyID
+   * @param {string} password
+   */
   constructor(lobbyID, password) {
     /** @type {Set<ClientID>} */
     this.clientIDs = new Set();
@@ -217,7 +223,9 @@ export class Lobby {
   }
 
   get acceptingNewPlayers() {
-    return this.clientIDs.size < Game.MAX_PLAYERS && this.stateMachine.verifyState(LobbyStateMachine.LOBBY_STATES.PRE_GAME);
+    let hasMaxPlayers = this.clientIDs.size >= Game.MAX_PLAYERS;
+    let inPreGame = this.stateMachine.verifyState(LobbyStateMachine.LOBBY_STATES.PRE_GAME);
+    return !hasMaxPlayers && inPreGame;
   }
 
   returnToPreGameLobby() {
@@ -363,10 +371,11 @@ export class Lobby {
 class LobbyStateMachine {
   constructor() {
     let states = {};
-    for (const state in LOBBY_STATES) {
+    for (const state in LobbyStateMachine.LOBBY_STATES) {
       if (!LobbyStateMachine.LOBBY_STATES.hasOwnProperty(state)) return;
-      states[state] = {
-        transitions: LobbyStateMachine.VALID_TRANSITIONS[state],
+      let stateValue = LobbyStateMachine.LOBBY_STATES[state];
+      states[stateValue] = {
+        transitions: LobbyStateMachine.VALID_TRANSITIONS[stateValue],
       };
     }
     /** @type {StateMachine} */
@@ -394,7 +403,7 @@ class LobbyStateMachine {
   }
 
   verifyState(...states) {
-    this.stateMachine.verifyState(...states);
+    return this.stateMachine.verifyState(...states);
   }
 
   get state() { return this.stateMachine.state; }
@@ -443,7 +452,7 @@ export class LobbyStore {
     return this.lobbyMapping.entries();
   }
 
-  static size() {
+  static get size() {
     return this.lobbyMapping.size;
   }
 }

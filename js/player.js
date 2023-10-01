@@ -10,7 +10,7 @@ export class Player {
   static get NUM_STARTING_CARDS() { return 5; };
 
   constructor(clientID) {
-    this.numCards = NUM_STARTING_CARDS;
+    this.numCards = Player.NUM_STARTING_CARDS;
     /** @type {Card[]} */
     this.cards = [];
     /** @type {string} */

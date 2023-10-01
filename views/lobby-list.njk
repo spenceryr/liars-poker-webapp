@@ -4,4 +4,14 @@
   <meta charset="utf-8" />
   <title>Liar's Poker</title>
 </head>
-<h1>Lobby List 1</h1>
+
+<body>
+  <h1>Lobby List</h1>
+  <ul>
+  {% for lobby in lobbies %}
+  <li><a href="/lobby/{{ lobby }}">{{ lobby }}</a></li>
+  {% else %}
+  <li>No lobbies available.</li>
+  {% endfor %}
+  </ul>
+</body>

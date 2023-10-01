@@ -215,10 +215,11 @@ export class Game {
 class GameStateMachine {
   constructor() {
     let states = {};
-    for (const state in GAME_STATES) {
+    for (const state in GameStateMachine.GAME_STATES) {
       if (!GameStateMachine.GAME_STATES.hasOwnProperty(state)) return;
-      states[state] = {
-        transitions: GameStateMachine.VALID_TRANSITIONS[state],
+      let stateValue = GameStateMachine.GAME_STATES[state];
+      states[stateValue] = {
+        transitions: GameStateMachine.VALID_TRANSITIONS[stateValue],
       };
     }
     /** @type {StateMachine} */
@@ -252,7 +253,7 @@ class GameStateMachine {
   }
 
   verifyState(...states) {
-    this.stateMachine.verifyState(...states);
+    return this.stateMachine.verifyState(...states);
   }
 
   get state() { return this.stateMachine.state; }
