@@ -57,8 +57,8 @@ export class Lobby {
   getLobbySnapshot() {
     // TODO: (spencer) Create class.
     return {
-      player_connections: this.clients.map((client) =>
-        [client.player.playerID, { connected: client.isConnected, disconnected: client.isDisconnected }]),
+      player_snapshots: this.clients.map((client) =>
+        [client.player.playerID, { connected: client.isConnected, disconnected: client.isDisconnected, ready: client.player.ready }]),
       last_winner: this.lastWinner,
       lobby_state: this.stateMachine.state
     }
@@ -292,7 +292,8 @@ export class Lobby {
         try {
           ClientDataStore.get(player.clientID).sendMessage(JSON.stringify({
             type: "GAME_EVENT.SETUP",
-            cards: player.cards.map((card) => card.toObj())
+            cards: player.cards.map((card) => card.toObj()),
+            playerOrder: players.map((player) => player.playerID)
           }));
         } catch (e) {
           console.error(e);

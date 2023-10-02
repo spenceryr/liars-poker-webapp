@@ -1,47 +1,306 @@
 <!doctype html>
 <html lang="en-US">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <title>Liar's Poker</title>
 </head>
+
 <body>
   <h1>Lobby</h1>
   <div class="container" id="main-view">
-    <div id="main-connecting" class="d-flex justify-content-">
+    <div id="main-heading" class="d-flex justify-content-">
       <h2>Connecting...</h2>
-      <div class="spinner-border ml-auto"></div>
+      <span class="spinner-border ml-auto"></span>
     </div>
-    <div id="main-pre-game" class="d-flex justify-content-">
-      <h2>Pre-Game Lobby</h2>
-    </div>
-    <div id="main-game" class="d-flex justify-content-">
-      <h2>Game</h2>
-    </div>
-    <div id="main-post-game" class="d-flex justify-content-">
-      <h2>Post-Game Lobby</h2>
+    <div id="main-body" class="d-flex-column justify-content-">
+      <ul id="pre-game-lobby-player-list" class="list-group">
+        <li class="list-group-item d-flex justify-content-between align-items-start">
+          <div class="mx-2 d-flex liars-player-list-item">
+            <span class="fw-bold liars-player-name">&ltBob&gt</span>
+            <span class="ms-2 liars-player-connection">
+              <span class="spinner-border spinner-border-sm"></span>
+            </span>
+          </div>
+        </li>
+      </ul>
     </div>
   </div>
+  <template id="pre-game-lobby-player-list-template">
+    <ul id="pre-game-lobby-player-list" class="list-group">
+    </ul>
+  </template>
+  <template id="pre-game-lobby-player-list-item-template">
+    <li class="list-group-item d-flex justify-content-between align-items-start">
+      <div class="mx-2 d-flex liars-player-list-item">
+        <span class="player-name">
+          <slot name="player-name">&ltUnknown&gt</slot>
+        </span>
+        <span class="ms-2 player-connection">
+          <slot name="player-connection"></slot>
+        </span>
+      </div>
+      <span class="player-ready">
+        <slot name="player-ready">READY_STATE_UNKNOWN</slot>
+      </span>
+    </li>
+  </template>
+  <template id="player-connection-state-disconnected">
+    <i class="bi bi-wifi-off"></i>
+  </template>
+  <template id="player-connection-state-connected">
+    <span></span>
+  </template>
+  <template id="player-connection-state-connecting">
+    <span class="spinner-border spinner-border-sm"></span>
+  </template>
+  <template id="player-ready-icon">
+    <i class="bi bi-check-circle-fill text-success"></i>
+  </template>
+  <template id="player-not-ready-icon">
+    <i class="bi bi-circle"></i>
+  </template>
   <script>
+    var playerID = null;
+    var players = [];
+    var playerIDToHTMLID = new Map();
+    var lobbyStateMachine = null;
+    var gameStateMachine = null;
+    var socket = null;
+
+    function replaceSlot(ele, slot, replace) {
+      let query = ele.querySelector(`slot[name=${slot}]`);
+      if (query && query.replaceWith) query.replaceWith(replace);
+    }
+
+    function clearHTML(ele) {
+      ele.innerHTML = "";
+    }
+
+    function getTemplate(id, expectedChildren = 1) {
+      let domFrag = document.getElementById(id).content.cloneNode(true);
+      console.assert(domFrag.childElementCount === expectedChildren);
+      return domFrag;
+    }
+
+    function processMsg(msg) {
+      let type = msg.type;
+      if (typeof type !== "string") return;
+      switch (type) {
+        case "CLIENT_EVENT.CONNECTION_ACK": {
+          let { playerID, lobby, game } = msg.snapshot;
+          if (!playerID || !lobby) {
+            console.error("Failed to receive connection ack");
+            return;
+          }
+          window.playerID = playerID;
+          window.players = lobby.player_snapshots;
+          window.lobbyStateMachine = new LobbyStateMachine(lobby.lobby_state);
+          if (game) {
+            window.gameStateMachine = new GameStateMachine(game.game_state);
+          }
+          handleConnectionAck();
+          break;
+        }
+        case "LOBBY_EVENT.PLAYER_CONNECT": {
+          break;
+        }
+        case "LOBBY_EVENT.PLAYER_DISCONNECT": {
+          break;
+        }
+        case "LOBBY_EVENT.PLAYER_JOINED": {
+          break;
+        }
+        case "LOBBY_EVENT.PLAYER_LEFT": {
+          break;
+        }
+        case "LOBBY_EVENT.PLAYER_READY": {
+          break;
+        }
+        case "LOBBY_EVENT.PLAYER_UNREADY": {
+          break;
+        }
+        case "GAME_EVENT.SETUP": {
+          break;
+        }
+        case "GAME_EVENT.PLAYER_TURN": {
+          break;
+        }
+        case "GAME_EVENT.PLAYER_PROPOSE_HAND": {
+          break;
+        }
+        case "GAME_EVENT.REVEAL": {
+          break;
+        }
+        case "GAME_EVENT.GAME_OVER": {
+          break;
+        }
+        case "LOBBY_EVENT.ENTER_PRE_GAME_LOBBY": {
+          break;
+        }
+      }
+    }
+
+    function readyButton(ready) {
+      const buttonSpan = document.createElement("span");
+      const button = document.createElement("input");
+      button.id = "player-ready-button";
+      button.setAttribute("type", "checkbox");
+      button.setAttribute("class", "btn-check");
+      button.setAttribute("autocomplete", "off");
+      const buttonLabel = document.createElement("label");
+      buttonLabel.innerHTML = ready ? "Unready" : "Ready";
+      buttonLabel.setAttribute("class", "btn");
+      buttonLabel.setAttribute("for", "player-ready-button");
+      if (ready) {
+        button.setAttribute("checked", "");
+        buttonLabel.innerHTML = "Ready";
+        buttonLabel.classList.add("btn-outline-success");
+      } else {
+        buttonLabel.innerHTML = "Not Ready";
+        buttonLabel.classList.add("btn-outline-secondary");
+      }
+      button.addEventListener("change", (event) => {
+        if (button.checked) {
+          buttonLabel.innerHTML = "Ready";
+          buttonLabel.classList.replace("btn-outline-secondary", "btn-outline-success");
+          sendMessasge(JSON.stringify({ type: CLIENT_MSGS.READY_UP }));
+        }
+        else {
+          buttonLabel.innerHTML = "Not Ready";
+          buttonLabel.classList.replace("btn-outline-success", "btn-outline-secondary");
+          sendMessasge(JSON.stringify({ type: CLIENT_MSGS.READY_DOWN }));
+        }
+      });
+      buttonSpan.appendChild(button);
+      buttonSpan.appendChild(buttonLabel);
+      return buttonSpan;
+    }
+
+    function setupPreGameLobby() {
+      let mainHeading = document.getElementById("main-heading");
+      mainHeading.innerHTML = "";
+      let mainBody = document.getElementById("main-body");
+      clearHTML(mainBody);
+      let newHeading = document.createElement("h2");
+      newHeading.innerHTML = "Pre-Game Lobby";
+      let playerList = getTemplate("pre-game-lobby-player-list-template");
+      let currentPlayerReady = false;
+      for (const [playerID, snapshot] of players) {
+        /** @type {DocumentFragment} */
+        let li = getTemplate("pre-game-lobby-player-list-item-template");
+        let nameNode = document.createTextNode(playerID);
+        replaceSlot(li, "player-name", nameNode)
+        let connectionStateNode = null;
+        if (snapshot.connected) {
+          connectionStateNode = getTemplate("player-connection-state-connected");
+        } else if (snapshot.disconnected) {
+          connectionStateNode = getTemplate("player-connection-state-disconnected");
+          li.firstElementChild.classList.add("disabled");
+        } else {
+          connectionStateNode = getTemplate("player-connection-state-connecting");
+          li.firstElementChild.classList.add("disabled");
+        }
+        replaceSlot(li, "player-connection", connectionStateNode);
+        let readyNode = null;
+        if (snapshot.ready) {
+          readyNode = getTemplate("player-ready-icon");
+        } else {
+          readyNode = getTemplate("player-not-ready-icon");
+        }
+        replaceSlot(li, "player-ready", readyNode);
+        if (playerID === window.playerID) {
+          currentPlayerReady = snapshot.ready;
+          nameNode.parentElement.classList.add("fw-bold");
+          playerList.firstElementChild.prepend(li);
+        } else {
+          playerList.firstElementChild.appendChild(li);
+        }
+      }
+      mainBody.appendChild(playerList);
+      mainBody.appendChild(readyButton(currentPlayerReady));
+    }
+
+    function setupGame() {
+      let mainHeading = document.getElementById("main-heading");
+      mainHeading.innerHTML = "";
+      let mainBody = document.getElementById("main-body");
+      clearHTML(mainBody);
+      let newHeading = document.createElement("h2");
+      newHeading.innerHTML = "Game";
+
+    }
+
+    function handleConnectionAck() {
+      switch (window.lobbyStateMachine.state) {
+        case LobbyStateMachine.LOBBY_STATES.PRE_GAME: {
+          setupPreGameLobby();
+          break;
+        }
+        case LobbyStateMachine.LOBBY_STATES.IN_GAME: {
+
+          break;
+        }
+        case LobbyStateMachine.LOBBY_STATES.POST_GAME: {
+          break;
+        }
+      }
+    }
+
+    function sendMessage(data) {
+      if (!socket || !socket.readyState !== WebSocket.OPEN) {
+        console.error(`Failed to send message ${data}`);
+      }
+      socket.send(data);
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
-      const socket = new WebSocket(`wss://${location.host}`);
 
-      // Connection opened
-      socket.addEventListener("open", (event) => {
-        document.getElementById("main-view").innerHTML = "Done connecting";
-      });
+      window.players = [
+        ["p1", { connected: true, disconnected: false, ready: true }],
+        ["p2", {connected: false, disconnected: true, ready: false }],
+        ["p3", {connected: false, disconnected: false, ready: false }],
+        ["p4", {connected: false, disconnected: false, ready: true }],
+      ];
+      window.playerID = "p1";
+      setupPreGameLobby();
+      // socket = new WebSocket(`wss://${location.host}`);
 
-      socket.addEventListener("error", (event) => {
-        console.error(`Websocket error: ${JSON.stringify(event, ["message", "arguments", "type", "name"])}`);
-      });
+      // // Connection opened
+      // socket.addEventListener("open", (event) => {
+      //   let mainHeading = document.getElementById("main-heading");
+      //   let mainBody = document.getElementById("main-body");
+      //   clearHTML(mainHeading);
+      //   clearHTML(mainBody);
+      //   let newHeading = document.createElement("h2");
+      //   newHeading.innerHTML = "Connected";
+      // });
 
-      // Listen for messages
-      socket.addEventListener("message", (event) => {
-        console.log("Message from server ", event.data);
-      });
+      // socket.addEventListener("error", (event) => {
+      //   console.error(`Websocket error: ${JSON.stringify(event, ["message", "arguments", "type", "name"])}`);
+      // });
+
+      // // Listen for messages
+      // socket.addEventListener("message", (event) => {
+      //   let msg = null;
+      //   try {
+      //     msg = JSON.parse(ev.data);
+      //   } catch (e) {
+      //     console.error(`Error processing JSON for message`);
+      //     return;
+      //   }
+      //   processMsg(msg);
+      // });
     });
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+    crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 </body>
+
 </html>

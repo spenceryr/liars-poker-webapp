@@ -57,7 +57,7 @@ export class ClientData {
     ws.on("message", this.onMessage);
     let lobby = this.lobby;
     if (!lobby) return false;
-    ws.send(JSON.stringify({
+    this.sendMessage(JSON.stringify({
       type: "CLIENT_EVENT.CONNECTION_ACK",
       snapshot: {
         player_id: this.player.playerID,
