@@ -8,11 +8,7 @@
   </head>
   <body>
     <div id="app"></div>
-    {% if environment === 'production' %}
-    <script type="module" src="{{ manifest['src/main.js'].file }}"></script>
-    {% else %}
     <script type="module" src="http://localhost:5173/@vite/client"></script>
     <script type="module" src='/@/pages/index/main.js'></script>
-    {% endif %}
   </body>
 </html>
