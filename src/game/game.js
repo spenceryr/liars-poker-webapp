@@ -1,9 +1,10 @@
 "use strict";
+import assert from "node:assert";
+
 import EventEmitter from "events";
 import { StateMachine } from "./state-machine.js";
 import { Player } from "./player.js";
 import { PlayingCards } from "./playing-cards.js";
-import { PlayerCustomHand } from "./player-custom-hand.js";
 
 export const GAME_EVENT = {
   SETUP: "SETUP",
@@ -24,7 +25,7 @@ export class Game {
    */
   constructor(players, startingPlayer) {
     let numPlayers = players.length;
-    assert(numPlayers <= PLAYERS_MAX);
+    assert(numPlayers <= Game.MAX_PLAYERS);
     let startingPlayerIndex = players.indexOf(startingPlayer);
     assert(startingPlayerIndex >= 0);
     /** @type {Player[]} */
@@ -37,7 +38,7 @@ export class Game {
     this.callingPlayer = null;
     /** @type {Player} */
     this.calledPlayer = null;
-    /** @type {PlayerCustomHand?} */
+    /** @type {import("./player-custom-hand.js").PlayerCustomHand?} */
     this.lastHand = null;
     this.stateMachine = new GameStateMachine();
     this.stateMachine.emitter.on("state_change", this.handleStateChange);
@@ -199,7 +200,7 @@ export class Game {
   /**
    *
    * @param {Player} player
-   * @param {PlayerCustomHand} hand
+   * @param {import("./player-custom-hand.js").PlayerCustomHand} hand
    * @returns
    */
   playerProposedHand(player, hand) {
@@ -216,7 +217,7 @@ class GameStateMachine {
   constructor() {
     let states = {};
     for (const state in GameStateMachine.GAME_STATES) {
-      if (!GameStateMachine.GAME_STATES.hasOwnProperty(state)) return;
+      if (!Object.prototype.hasOwnProperty.call(GameStateMachine.GAME_STATES, state)) return;
       let stateValue = GameStateMachine.GAME_STATES[state];
       states[stateValue] = {
         transitions: GameStateMachine.VALID_TRANSITIONS[stateValue],

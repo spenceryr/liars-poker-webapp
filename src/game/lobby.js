@@ -1,12 +1,13 @@
 "use strict";
 import { Player } from "./player.js";
-import { ClientData, ClientDataStore } from "./client-data.js";
+import { ClientDataStore } from "./client-data.js";
 import { GAME_EVENT, Game } from "./game.js";
-import { PlayerCustomHand } from "./player-custom-hand.js";
 import { StateMachine } from "./state-machine.js";
 
 /**
  * @typedef {import("./client-data").ClientID} ClientID
+ * @typedef {import("./client-data").ClientData} ClientData
+ * @typedef {import("./player-custom-hand.js").PlayerCustomHand} PlayerCustomHand
  */
 
 /**
@@ -105,7 +106,7 @@ export class Lobby {
       this.clientTimeouts.delete(client.clientID);
     }
     if (this.clientIDs.size === 0) {
-      destroyThis();
+      this.destroyThis();
       return;
     }
     this.sendToAllClients(JSON.stringify({
@@ -373,7 +374,7 @@ class LobbyStateMachine {
   constructor() {
     let states = {};
     for (const state in LobbyStateMachine.LOBBY_STATES) {
-      if (!LobbyStateMachine.LOBBY_STATES.hasOwnProperty(state)) return;
+      if (!Object.prototype.hasOwnProperty.call(LobbyStateMachine.LOBBY_STATES, state)) return;
       let stateValue = LobbyStateMachine.LOBBY_STATES[state];
       states[stateValue] = {
         transitions: LobbyStateMachine.VALID_TRANSITIONS[stateValue],

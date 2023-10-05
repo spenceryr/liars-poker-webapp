@@ -1,9 +1,13 @@
 'use strict';
 
-import https from "https"
-import { WebSocketServer } from "ws";
 import { createServer } from "node:https";
 import { readFileSync } from "node:fs";
+import path from "node:path";
+import assert from "node:assert";
+import { randomUUID } from "node:crypto";
+import process from "node:process";
+
+import { WebSocketServer } from "ws";
 import express from "express";
 import session from "express-session";
 import { default as _FileStore } from "session-file-store";
@@ -11,10 +15,8 @@ const FileStore = _FileStore(session)
 import { rateLimit } from "express-rate-limit";
 import bcrypt from "bcrypt"
 import "dotenv/config"
-import path from "node:path";
-import assert from "node:assert";
-import { randomUUID } from "node:crypto";
 import nunjucks from "nunjucks"
+
 import { ClientData, ClientDataStore } from "./js/client-data.js";
 import { Lobby, LobbyStore } from "./js/lobby.js";
 
@@ -41,12 +43,6 @@ assert(SESSION_STORE_PATH);
 var SESSION_STORE_SECRET = process.env.SESSION_STORE_SECRET;
 assert(SESSION_STORE_SECRET);
 
-
-/**
- * @type {Map<ClientID, ClientData>}
- */
-var connections = {};
-
 /**
  * @param {Express} app
  * @returns {https.Server}
@@ -61,7 +57,7 @@ function createHTTPSServer(app) {
 
 /**
  *
- * @param {https.Server} httpsServer
+ * @param {import('node:https').Server} httpsServer
  * @param {session} sessionRouter
  * @returns {WebSocketServer}
  */
@@ -114,7 +110,10 @@ function expressSetup(sessionRouter) {
   }));
   app.use(sessionRouter);
   app.use(express.urlencoded({extended: "false"}));
-  app.use(express.json(), (err, req, res, next) => { res.sendStatus(400) });
+  app.use(express.json(), (err, req, res, next) => {
+    console.error(`Error with express parsing json: ${err}`);
+    res.sendStatus(400)
+  });
 
   app.use(function setClient(req, res, next) {
     if (req.session.liarsClientID) {
@@ -232,7 +231,7 @@ function expressSetup(sessionRouter) {
     // TODO: (spencer) Remove once have multi-lobby support.
     generateLobbyIfNoLobbies(),
     function serveLobbiesList(req, res) {
-      res.render("lobby-list.njk", { lobbies: Array.from(LobbyStore.entries()).map(([lobbyID, _]) => lobbyID) });
+      res.render("lobby-list.njk", { lobbies: Array.from(LobbyStore.entries()).map(([lobbyID, lobby]) => lobbyID) });
     },
     handleRenderError()
   );

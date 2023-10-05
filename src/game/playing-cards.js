@@ -18,10 +18,9 @@ export class PlayingCards {
    * @returns
    */
   deal(numCardsPerPlayer) {
-    if (numCardsPerPlayer.reduce((acc, curr) => acc + curr, 0) != numCards) {
+    if (numCardsPerPlayer.reduce((acc, curr) => acc + curr, 0) !== this.cardsInPlay.length) {
       return undefined;
     }
-    let allPlayerCards = [];
     let numCardsInPlay = this.cardsInPlay.length;
     let cardsInPlayCopy = [...this.cardsInPlay];
     return numCardsPerPlayer.map((numCards) => {

@@ -1,5 +1,4 @@
 "use strict";
-import assert from "node:assert";
 import { WebSocket } from "ws";
 import { LeakyBucket } from "./leaky-bucket.js";
 import { LobbyStore } from "./lobby.js";
@@ -85,11 +84,7 @@ export class ClientData {
     this.lobby?.clientLeft(this);
   }
 
-  /**
-   *
-   * @param {CloseEvent} ev
-   */
-  onClose(ev) {
+  onClose() {
     this.lobby?.clientDisconnect(this);
   }
 
@@ -107,7 +102,7 @@ export class ClientData {
       console.error(`Error processing JSON from client ${this.clientID}`);
       return;
     }
-    processMsg(msg);
+    this.processMsg(msg);
   }
 
   processMsg(msg) {
@@ -152,7 +147,7 @@ export class ClientData {
         if (!msg.proposedHand || !Array.isArray(msg.proposedHand)) return;
         let cards = [];
         for (const card of msg.proposedHand) {
-          if (!card.value || typeof card.value !== number) return;
+          if (!card.value || typeof card.value !== "number") return;
           cards.push(new Card(card.value));
         }
         game.playerProposedHand(this.player, cards);

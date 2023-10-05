@@ -53,7 +53,7 @@ export class PlayerCustomHand {
     cardsMap.forEach((count, value) => this.addItem(new PlayerCustomHandItem(value, count)));
   }
 
-  static get MAX_COUNT() { return 5; };
+  static get MAX_COUNT() { return 5; }
 
   /**
    *

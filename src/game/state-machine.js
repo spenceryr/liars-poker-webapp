@@ -15,7 +15,7 @@ export class StateMachine {
     this.states = states;
     this.state = initialState;
     this.emitter = new EventEmitter();
-    assert(this.states.hasOwnProperty(initialState));
+    assert(Object.prototype.hasOwnProperty.call(this.states, initialState));
   }
 
   transition(nextState) {
