@@ -57,7 +57,8 @@ export class ClientData {
     let lobby = this.lobby;
     if (!lobby) return false;
     this.sendMessage(JSON.stringify({
-      type: "CLIENT_EVENT.CONNECTION_ACK",
+      type: "CLIENT_EVENT",
+      event: "CONNECTION_ACK",
       snapshot: {
         player_id: this.player.playerID,
         lobby: lobby.getLobbySnapshot(),

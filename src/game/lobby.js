@@ -39,7 +39,8 @@ export class Lobby {
         .forEach((client) => this.clientLeft(client));
       this.lastWinner = null;
       this.sendToAllClients(JSON.stringify({
-        type: "LOBBY_EVENT.ENTER_PRE_GAME_LOBBY",
+        type: "LOBBY_EVENT",
+        event: "ENTER_PRE_GAME_LOBBY",
       }));
     });
     /** @type {Map<ClientID, NodeJS.Timeout>} */
@@ -77,7 +78,8 @@ export class Lobby {
     client.player = new Player(client.clientID);
     client.lobbyID = this.lobbyID;
     this.sendToAllClients(JSON.stringify({
-      type: "LOBBY_EVENT.PLAYER_JOINED",
+      type: "LOBBY_EVENT",
+      event: "PLAYER_JOINED",
       player: client.player.playerID,
     }));
     // Client has 30 seconds to connect before being dropped from lobby. This will not be refreshed if
@@ -110,7 +112,8 @@ export class Lobby {
       return;
     }
     this.sendToAllClients(JSON.stringify({
-      type: "LOBBY_EVENT.PLAYER_LEFT",
+      type: "LOBBY_EVENT",
+      event: "PLAYER_LEFT",
       player: client.player.playerID
     }));
     if (this.inGame) {
@@ -135,7 +138,8 @@ export class Lobby {
     if (!this.clientIDs.has(client.clientID)) return;
     client.player.ready = false;
     this.sendToAllClients(JSON.stringify({
-      type: "LOBBY_EVENT.PLAYER_DISCONNECT",
+      type: "LOBBY_EVENT",
+      event: "PLAYER_DISCONNECT",
       player: client.player.playerID
     }));
     // Give 1 minute for client to reconnect if in game.
@@ -176,7 +180,8 @@ export class Lobby {
     }
     if (this.destroyTimeout) clearTimeout(this.destroyTimeout);
     this.sendToAllClients(JSON.stringify({
-      type: "LOBBY_EVENT.PLAYER_CONNECT",
+      type: "LOBBY_EVENT",
+      event: "PLAYER_CONNECT",
       player: client.player.playerID,
     }));
     return true;
@@ -191,7 +196,8 @@ export class Lobby {
     if (!this.clientIDs.has(client.clientID)) return;
     if (client.player.ready) return;
     this.sendToAllClients(JSON.stringify({
-      type: "LOBBY_EVENT.PLAYER_READY",
+      type: "LOBBY_EVENT",
+      event: "PLAYER_READY",
       player: client.player.playerID
     }));
     this.checkReadyStates();
@@ -206,7 +212,8 @@ export class Lobby {
     if (!this.clientIDs.has(client.clientID)) return;
     if (!client.player.ready) return;
     this.sendToAllClients(JSON.stringify({
-      type: "LOBBY_EVENT.PLAYER_UNREADY",
+      type: "LOBBY_EVENT",
+      event: "PLAYER_UNREADY",
       player: client.player.playerID
     }));
   }
@@ -292,7 +299,8 @@ export class Lobby {
       players.forEach((player) => {
         try {
           ClientDataStore.get(player.clientID).sendMessage(JSON.stringify({
-            type: "GAME_EVENT.SETUP",
+            type: "GAME_EVENT",
+            event: "SETUP",
             cards: player.cards.map((card) => card.toObj()),
             playerOrder: players.map((player) => player.playerID)
           }));
@@ -308,7 +316,8 @@ export class Lobby {
      */
     [GAME_EVENT.PLAYER_TURN]: (player) => {
       this.sendToAllClients(JSON.stringify({
-        type: "GAME_EVENT.PLAYER_TURN",
+        type: "GAME_EVENT",
+        event: "PLAYER_TURN",
         player: player.playerID
       }));
     },
@@ -318,7 +327,8 @@ export class Lobby {
      */
     [GAME_EVENT.PLAYER_PROPOSE_HAND]: ({player, proposedHand}) => {
       this.sendToAllClients(JSON.stringify({
-        type: "GAME_EVENT.PLAYER_PROPOSE_HAND",
+        type: "GAME_EVENT",
+        event: "PLAYER_PROPOSE_HAND",
         player: player.playerID,
         proposedHand: proposedHand.cards.map((card) => card.toObj()),
       }));
@@ -330,7 +340,8 @@ export class Lobby {
      */
     [GAME_EVENT.REVEAL]: ({loser, winner}) => {
       this.sendToAllClients(JSON.stringify({
-        type: "GAME_EVENT.REVEAL",
+        type: "GAME_EVENT",
+        event: "REVEAL",
         playersCards: this.clients
           .map((client) => client.player)
           .reduce(
@@ -352,7 +363,8 @@ export class Lobby {
       this.lastWinner = winner?.clientID ?? null;
       this.sendToAllClients(JSON.stringify({
         // TODO: (spencer) Maybe include reason why game ended?
-        type: "GAME_EVENT.GAME_OVER",
+        type: "GAME_EVENT",
+        event: "GAME_OVER",
         winner: winner?.playerID ?? null,
       }));
       this.stateMachine.transition(LobbyStateMachine.LOBBY_STATES.POST_GAME);

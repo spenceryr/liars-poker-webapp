@@ -73,7 +73,17 @@ function loginWithPassword() {
         </div>
         <form @submit.prevent="loginWithPassword" class="row my-3 align-items-start justify-content-center">
           <div class="col-4 offset-4">
-            <input :class='{"is-invalid": loginResult !== "" }' :disabled="inputDisabled" class="form-control" placeholder="Enter Password" type="password" v-model="password" autocomplete="off" aria-describedby="validationResponse" required />
+            <input
+              :class='{"is-invalid": loginResult !== "" }'
+              :disabled="inputDisabled"
+              class="form-control"
+              placeholder="Enter Password"
+              type="password"
+              v-model="password"
+              autocomplete="off"
+              aria-describedby="validationResponse"
+              required
+            />
             <div id="validationResponse" class="invalid-feedback">{{ loginResult }}</div>
           </div>
           <div class="col-4">

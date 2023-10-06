@@ -1,51 +1,56 @@
 <script setup>
-import HelloWorld from '/@/components/HelloWorld.vue'
-import TheWelcome from '/@/components/TheWelcome.vue'
-import logo from '/@/assets/logo.svg'
+import 'vite/modulepreload-polyfill'
+import { onMounted, ref, defineAsyncComponent, shallowRef, computed } from 'vue';
+import PlayerListItem from '/@/components/PlayerListItem.vue'
+import { useWebSocket } from '/@/composables/useWebSocket.js'
+import { useLobby } from '/@/composables/useLobby.js'
+import { useGame } from '/@/composables/useGame.js'
 
-// import 'vite/modulepreload-polyfill'
+const GameView = defineAsyncComponent(() => {
+  import('/@/components/GameView.vue');
+});
+
+const lobbyEvent = shallowRef();
+const gameEvent = shallowRef();
+const initialized = ref(false);
+
+function onWSJSONMsg(msg) {
+
+}
+
+var { connected: wsConnected } = useWebSocket(onWSJSONMsg);
+var { lobbyState } = useLobby(lobbyEvent);
+var { gameState } = useGame(gameEvent);
+
+var connected = computed(() => wsConnected.value && initialized.value);
+
 </script>
 
 <template>
   <header>
-    <img alt="Vue logo" class="logo" :src='logo' width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-      <p>LOBBY</p>
-    </div>
+    <title>Liar's Poker</title>
   </header>
 
   <main>
-    <TheWelcome />
+    <div class="d-flex justify-content-center align-items-center">
+      <div class="container min-vh-100">
+        <div class="row m-3 justify-content-center align-items-start">
+          <h1 class="fw-bold">Liar's Poker For Da Boys</h1>
+        </div>
+        <div v-if="!connected">
+          <h2>Connecting...</h2>
+          <span class="spinner-border ml-auto"></span>
+        </div>
+        <!-- TODO: (spencer) Use a "dynamic component" here to choose the view based on lobby/game state -->
+        <ul v-else class="list-group">
+          <PlayerListItem v-for="player of players"
+            :player-id="player.id"
+            :connection="player.connection"
+            :ready="player.ready"
+            :active="player.id === localPlayer"
+          />
+        </ul>
+      </div>
+    </div>
   </main>
 </template>
-
-<style scoped>
-header {
-  line-height: 1.5;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-}
-</style>
