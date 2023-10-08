@@ -56,13 +56,18 @@ export class ClientData {
     ws.on("message", this.onMessage);
     let lobby = this.lobby;
     if (!lobby) return false;
+    let gameSnapshot = (this.lobby.inGame && this.lobby.game?.getGameSnapshot()) || null;
+    // Add 'playerHand' prop to gameSnapshot to provide this player's hand.
+    if (gameSnapshot) {
+      gameSnapshot['playerHand'] = this.player.cards.map((card) => card.toObj());
+    }
     this.sendMessage(JSON.stringify({
       type: "CLIENT_EVENT",
       event: "CONNECTION_ACK",
       snapshot: {
-        player_id: this.player.playerID,
+        playerID: this.player.playerID,
         lobby: lobby.getLobbySnapshot(),
-        game: (this.lobby.inGame && this.lobby.game?.getGameSnapshot(this.player)) || null
+        game: gameSnapshot
       }
     }));
     return true;

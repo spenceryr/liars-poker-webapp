@@ -45,21 +45,14 @@ export class Game {
     this.emitter = new EventEmitter();
   }
 
-  /**
-   *
-   * @param {Player} player
-   * @returns
-   */
-  getGameSnapshot(player) {
+  getGameSnapshot() {
     // TODO: (spencer) Create class.
     return {
-      game_state: this.stateMachine.state,
-      current_player_turn: this.players[this.currentPlayerIndexTurn].playerID,
-      calling_player: this.callingPlayer,
-      called_player: this.calledPlayer,
-      last_hand: this.lastHand?.cards.map((card) => card.toObj()),
-      num_cards_in_play: this.numCardsInPlay,
-      this_player_hand: player.cards.map((card) => card.toObj())
+      gameState: this.stateMachine.state,
+      currentPlayerTurn: this.players[this.currentPlayerIndexTurn].playerID,
+      lastHand: this.lastHand?.cards.map((card) => card.toObj()),
+      playersOrder: this.players.map((player) => player.playerID),
+      playersNumCards: this.players.reduce((acc, curr) => Object.assign(acc, { [curr.playerID]: curr.numCards }), {}),
     }
   }
 

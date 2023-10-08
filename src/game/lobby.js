@@ -59,10 +59,17 @@ export class Lobby {
   getLobbySnapshot() {
     // TODO: (spencer) Create class.
     return {
-      player_snapshots: this.clients.map((client) =>
-        [client.player.playerID, { connected: client.isConnected, disconnected: client.isDisconnected, ready: client.player.ready }]),
-      last_winner: this.lastWinner,
-      lobby_state: this.stateMachine.state
+      playerSnapshots: this.clients.reduce(
+        (acc, curr) => Object.assign(acc, {
+          [curr.player.playerID]: {
+            connection: curr.isConnected() ? 'CONNECTED' : (curr.isDisconnected ? 'DISCONNECTED' : 'CONNECTING'),
+            ready: client.player.ready
+          }
+        }),
+        {}
+      ),
+      lastWinner: this.lastWinner,
+      lobbyState: this.stateMachine.state
     }
   }
 
@@ -116,6 +123,7 @@ export class Lobby {
       event: "PLAYER_LEFT",
       player: client.player.playerID
     }));
+    // TODO: (spencer) Only end game if player still had cards.
     if (this.inGame) {
       this.game.startNextRoundOrEndGame(true);
     }
@@ -301,8 +309,9 @@ export class Lobby {
           ClientDataStore.get(player.clientID).sendMessage(JSON.stringify({
             type: "GAME_EVENT",
             event: "SETUP",
-            cards: player.cards.map((card) => card.toObj()),
-            playerOrder: players.map((player) => player.playerID)
+            playerHand: player.cards.map((card) => card.toObj()),
+            playersOrder: players.map((player) => player.playerID),
+            playersNumCards: players.reduce((acc, curr) => Object.assign(acc, { [curr.playerID]: curr.numCards }), {}),
           }));
         } catch (e) {
           console.error(e);
@@ -342,7 +351,7 @@ export class Lobby {
       this.sendToAllClients(JSON.stringify({
         type: "GAME_EVENT",
         event: "REVEAL",
-        playersCards: this.clients
+        allPlayersCards: this.clients
           .map((client) => client.player)
           .reduce(
             (acc, curr) => Object.assign(acc, { [curr.playerID]: curr.cards.map((card) => card.toObj()) }),
@@ -363,7 +372,7 @@ export class Lobby {
       this.lastWinner = winner?.clientID ?? null;
       this.sendToAllClients(JSON.stringify({
         // TODO: (spencer) Maybe include reason why game ended?
-        type: "GAME_EVENT",
+        type: "LOBBY_EVENT",
         event: "GAME_OVER",
         winner: winner?.playerID ?? null,
       }));

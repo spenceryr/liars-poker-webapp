@@ -12,14 +12,43 @@ const GameView = defineAsyncComponent(() => {
 
 const lobbyEvent = shallowRef();
 const gameEvent = shallowRef();
-const initialized = ref(false);
+const player = ref({});
+const initialized = shallowRef(false);
 
 function onWSJSONMsg(msg) {
-
+  if (!msg.type || typeof msg.type !== 'string') return;
+  switch (msg.type) {
+    case 'CLIENT_EVENT': {
+      if (msg.event === 'CONNECTION_ACK') {
+        if (!msg.snapshot) return;
+        lobbyEvent = {
+          type: 'INITIALIZE',
+          snapshot: msg.snapshot.lobby
+        }
+        gameEvent = {
+          type: 'INITIALIZE',
+          snapshot: msg.snapshot.game
+        }
+        player.value = {
+          id: msg.snapshot.playerID
+        }
+        initialized.value = true;
+      }
+      break;
+    }
+    case "LOBBY_EVENT": {
+      lobbyEvent = msg;
+      break;
+    }
+    case "GAME_EVENT": {
+      gameEvent = msg;
+      break;
+    }
+  }
 }
 
 var { connected: wsConnected } = useWebSocket(onWSJSONMsg);
-var { lobbyState } = useLobby(lobbyEvent);
+var { players, lastWinner, inPreGameLobby } = useLobby(lobbyEvent);
 var { gameState } = useGame(gameEvent);
 
 var connected = computed(() => wsConnected.value && initialized.value);
@@ -43,7 +72,7 @@ var connected = computed(() => wsConnected.value && initialized.value);
         </div>
         <!-- TODO: (spencer) Use a "dynamic component" here to choose the view based on lobby/game state -->
         <ul v-else class="list-group">
-          <PlayerListItem v-for="player of players"
+          <PlayerListItem v-for="player of lobbyState.players"
             :player-id="player.id"
             :connection="player.connection"
             :ready="player.ready"
