@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "es6",
+    "target": "es6",
+    "paths": {
+      "/@/*": ["./src/*"]
+    },
+    "baseUrl": ".",
+    "allowSyntheticDefaultImports": true,
+    "checkJs": true,
+    "moduleResolution": "nodenext"
+  },
+  "include": ["./**/*"],
+  "exclude": ["./dist"]
+}

@@ -2,25 +2,28 @@ import { watch, ref, shallowRef, toValue } from "vue";
 import { checkType, checkTypes } from "/@/utilities/checkType";
 
 export function useLobby(lobbyEvent) {
-  let players = ref({});
-  let lastWinner = shallowRef(null);
-  let lobbyScreen = shallowRef(null);
+  /** @type {import("vue").Ref<Object<string, {connection: String, ready: boolean }>>} */
+  const players = ref({});
+  /** @type {import("vue").Ref<string>} */
+  const lastWinner = shallowRef(null);
+  /** @type {import("vue").Ref<string>} */
+  const lobbyScreen = shallowRef(null);
 
   function setPlayer(playerID, connection, ready) {
-    let playerInfo = { connection: connection, ready: ready };
+    const playerInfo = { connection: connection, ready: ready };
     players.value[playerID] = playerInfo;
   }
 
   watch(lobbyEvent, (newLobbyEvent) => {
-    let lobbyEvent = toValue(newLobbyEvent);
+    const lobbyEvent = toValue(newLobbyEvent);
     if (!checkTypes([lobbyEvent, lobbyEvent.event], ['object', 'string'])) return;
     switch (lobbyEvent.event) {
       case 'INITIALIZE': {
-        let snapshot = lobbyEvent.snapshot;
+        const snapshot = lobbyEvent.snapshot;
         if (!checkType(snapshot, 'object')) return;
-        let snapPlayers = snapshot.playerSnapshots;
-        let snapLastWinner = snapshot.lastWinner;
-        let snapLobbyState = snapshot.lobbyState;
+        const snapPlayers = snapshot.playerSnapshots;
+        const snapLastWinner = snapshot.lastWinner;
+        const snapLobbyState = snapshot.lobbyState;
         if (!checkTypes([snapPlayers, snapLastWinner, snapLobbyState], ['object', 'string', 'string'])) return;
         // TODO: (spencer) Maybe validate the object more.
         players.value = snapPlayers;
@@ -29,27 +32,27 @@ export function useLobby(lobbyEvent) {
         break;
       }
       case 'PLAYER_CONNECT': {
-        let playerID = lobbyEvent.player;
+        const playerID = lobbyEvent.player;
         if (!checkType(playerID, 'string')) return;
         setPlayer(playerID, 'CONNECTED', false);
         break;
       }
       case 'PLAYER_JOINED': {
-        let playerID = lobbyEvent.player;
+        const playerID = lobbyEvent.player;
         if (!checkType(playerID, 'string')) return;
         setPlayer(playerID, 'DISCONNECTED', false);
         break;
       }
       case 'PLAYER_DISCONNECT': {
-        let playerID = lobbyEvent.player;
+        const playerID = lobbyEvent.player;
         if (!checkType(playerID, 'string')) return;
         setPlayer(playerID, 'DISCONNECTED', false);
         break;
       }
       case 'PLAYER_LEFT': {
-        let playerID = lobbyEvent.player;
+        const playerID = lobbyEvent.player;
         if (!checkType(playerID, 'string')) return;
-        delete lobbyState.value.players[playerID];
+        delete players[playerID];
         break;
       }
       case 'ENTER_PRE_GAME_LOBBY': {
@@ -57,19 +60,19 @@ export function useLobby(lobbyEvent) {
         break;
       }
       case 'PLAYER_READY': {
-        let playerID = lobbyEvent.player;
+        const playerID = lobbyEvent.player;
         if (!checkType(playerID, 'string')) return;
         setPlayer(playerID, 'CONNECTED', true);
         break;
       }
       case 'PLAYER_UNREADY': {
-        let playerID = lobbyEvent.player;
+        const playerID = lobbyEvent.player;
         if (!checkType(playerID, 'string')) return;
         setPlayer(playerID, 'CONNECTED', false);
         break;
       }
       case 'GAME_OVER': {
-        let winner = lobbyEvent.winner;
+        const winner = lobbyEvent.winner;
         if (checkType(winner, 'string')) lastWinner.value = winner;
         else if (checkType(winner, 'null')) lastWinner.value = null;
         lobbyScreen.value = 'POST_GAME';
@@ -78,5 +81,5 @@ export function useLobby(lobbyEvent) {
     }
   });
 
-  return { players, lastWinner, lobbyScreen };
+  return { players: players, lastWinner: lastWinner, lobbyScreen: lobbyScreen };
 }

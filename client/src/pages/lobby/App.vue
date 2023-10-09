@@ -1,19 +1,25 @@
 <script setup>
 import 'vite/modulepreload-polyfill'
-import { onMounted, ref, defineAsyncComponent, shallowRef, computed } from 'vue';
+import { ref, defineAsyncComponent, shallowRef, computed } from 'vue';
 import PlayerListItem from '/@/components/PlayerListItem.vue'
-import { useWebSocket } from '/@/composables/useWebSocket.js'
-import { useLobby } from '/@/composables/useLobby.js'
-import { useGame } from '/@/composables/useGame.js'
+import { useWebSocket } from '/@/composables/websocket.js'
+import { useLobby } from '/@/composables/lobby.js'
+import { useGameEventQueue } from '/@/composables/game-event-queue'
 
-const GameView = defineAsyncComponent(() => {
-  import('/@/components/GameView.vue');
-});
+// const GameView = defineAsyncComponent(() => {
+//   import('/@/components/GameView.vue');
+// });
 
 const lobbyEvent = shallowRef();
 const gameEvent = shallowRef();
 const player = ref({});
 const initialized = shallowRef(false);
+const playersCardMap = shallowRef(null);
+const playerHand = shallowRef(null);
+const playersOrder = shallowRef(null);
+const currentPlayerTurn = shallowRef(null);
+const lastPlayerTurn = shallowRef(null);
+const lastHand = shallowRef(null);
 
 function onWSJSONMsg(msg) {
   if (!msg.type || typeof msg.type !== 'string') return;
@@ -21,11 +27,11 @@ function onWSJSONMsg(msg) {
     case 'CLIENT_EVENT': {
       if (msg.event === 'CONNECTION_ACK') {
         if (!msg.snapshot) return;
-        lobbyEvent = {
+        lobbyEvent.value = {
           type: 'INITIALIZE',
           snapshot: msg.snapshot.lobby
         }
-        gameEvent = {
+        gameEvent.value = {
           type: 'INITIALIZE',
           snapshot: msg.snapshot.game
         }
@@ -37,21 +43,21 @@ function onWSJSONMsg(msg) {
       break;
     }
     case "LOBBY_EVENT": {
-      lobbyEvent = msg;
+      lobbyEvent.value = msg;
       break;
     }
     case "GAME_EVENT": {
-      gameEvent = msg;
+      gameEvent.value = msg;
       break;
     }
   }
 }
 
-var { connected: wsConnected } = useWebSocket(onWSJSONMsg);
-var { players, lastWinner, inPreGameLobby } = useLobby(lobbyEvent);
-var { gameState } = useGame(gameEvent);
+const { connected: wsConnected } = useWebSocket(onWSJSONMsg);
+const { players, lastWinner, inPreGameLobby } = useLobby(lobbyEvent);
+const { currentGameEvent } = useGameEventQueue(gameEvent);
 
-var connected = computed(() => wsConnected.value && initialized.value);
+const connected = computed(() => wsConnected.value && initialized.value);
 
 </script>
 
@@ -72,11 +78,11 @@ var connected = computed(() => wsConnected.value && initialized.value);
         </div>
         <!-- TODO: (spencer) Use a "dynamic component" here to choose the view based on lobby/game state -->
         <ul v-else class="list-group">
-          <PlayerListItem v-for="player of lobbyState.players"
-            :player-id="player.id"
-            :connection="player.connection"
-            :ready="player.ready"
-            :active="player.id === localPlayer"
+          <PlayerListItem v-for="(playerInfo, playerID) in players"
+            :player-id="playerID"
+            :connection="playerInfo.connection"
+            :ready="playerInfo.ready"
+            :active="playerID === player"
           />
         </ul>
       </div>
