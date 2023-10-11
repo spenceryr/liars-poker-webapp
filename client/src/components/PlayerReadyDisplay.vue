@@ -8,5 +8,5 @@ defineProps({
 
 <template>
   <i v-if="ready" class="bi bi-check-circle-fill text-success"></i>
-  <i v-else class="bi bi-circle"></i>
+  <i v-else class="bi bi-question-lg text-secondary"></i>
 </template>

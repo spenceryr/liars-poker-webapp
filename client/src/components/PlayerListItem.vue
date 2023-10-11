@@ -26,7 +26,7 @@ defineProps({
         </div>
       </div>
       <div class="col">
-        <PlayerReadyDisplay :ready='ready'/>
+        <slot name="contextItem"></slot>
       </div>
     </div>
   </li>

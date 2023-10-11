@@ -2,6 +2,7 @@
 import 'vite/modulepreload-polyfill'
 import { ref, defineAsyncComponent, shallowRef, computed } from 'vue';
 import PlayerListItem from '/@/components/PlayerListItem.vue'
+import PlayerReadyDisplay from '/@/components/PlayerReadyDisplay.vue';
 import { useWebSocket } from '/@/composables/websocket.js'
 import { useLobby } from '/@/composables/lobby.js'
 import { useGameEventQueue } from '/@/composables/game-event-queue'
@@ -14,12 +15,6 @@ const lobbyEvent = shallowRef();
 const gameEvent = shallowRef();
 const player = ref({});
 const initialized = shallowRef(false);
-const playersCardMap = shallowRef(null);
-const playerHand = shallowRef(null);
-const playersOrder = shallowRef(null);
-const currentPlayerTurn = shallowRef(null);
-const lastPlayerTurn = shallowRef(null);
-const lastHand = shallowRef(null);
 
 function onWSJSONMsg(msg) {
   if (!msg.type || typeof msg.type !== 'string') return;
@@ -81,8 +76,12 @@ const connected = computed(() => wsConnected.value && initialized.value);
           <PlayerListItem v-for="(playerInfo, playerID) in players"
             :player-id="playerID"
             :connection="playerInfo.connection"
-            :ready="playerInfo.ready"
             :active="playerID === player"
+          >
+            <template #contextItem>
+              <PlayerReadyDisplay :ready='playerInfo.ready'/>
+            </template>
+          </PlayerListItem>
           />
         </ul>
       </div>

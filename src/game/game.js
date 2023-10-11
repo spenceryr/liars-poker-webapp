@@ -31,15 +31,17 @@ export class Game {
     /** @type {Player[]} */
     this.players = players;
     this.numCardsInPlay = numPlayers * Player.NUM_STARTING_CARDS;
-    /** @type {PlayingCards} */
+    /** @type {PlayingCards?} */
     this.playingCards = null;
     this.currentPlayerIndexTurn = startingPlayerIndex;
-    /** @type {Player} */
+    /** @type {Player?} */
     this.callingPlayer = null;
-    /** @type {Player} */
+    /** @type {Player?} */
     this.calledPlayer = null;
     /** @type {import("./player-custom-hand.js").PlayerCustomHand?} */
     this.lastHand = null;
+    /** @type {Player?} */
+    this.lastHandPlayer = null;
     this.stateMachine = new GameStateMachine();
     this.stateMachine.emitter.on("state_change", this.handleStateChange);
     this.emitter = new EventEmitter();
@@ -51,6 +53,7 @@ export class Game {
       gameState: this.stateMachine.state,
       currentPlayerTurn: this.players[this.currentPlayerIndexTurn].playerID,
       lastHand: this.lastHand?.cards.map((card) => card.toObj()),
+      lastHandPlayer: this.lastHandPlayer?.playerID ?? null,
       playersOrder: this.players.map((player) => player.playerID),
       playersNumCards: this.players.reduce((acc, curr) => Object.assign(acc, { [curr.playerID]: curr.numCards }), {}),
     }
@@ -202,6 +205,7 @@ export class Game {
     if (playerIndex !== this.currentPlayerIndexTurn) return;
     if (this.lastHand && hand.compare(this.lastHand) <= 0) return;
     this.lastHand = hand;
+    this.lastHandPlayer = player;
     this.stateMachine.transition(GameStateMachine.GAME_STATES.PLAYER_TURN_END);
   }
 }

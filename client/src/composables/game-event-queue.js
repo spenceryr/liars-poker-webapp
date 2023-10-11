@@ -16,6 +16,14 @@ export class GameEvent {
   }
 }
 
+export const GAME_EVENTS = {
+  INITIALIZE: 'INITIALIZE',
+  SETUP: 'SETUP',
+  PLAYER_TURN: 'PLAYER_TURN',
+  PLAYER_PROPOSE_HAND: 'PLAYER_PROPOSE_HAND',
+  REVEAL: 'PLAYER_PROPOSE_HAND'
+}
+
 /**
  *
  * @param {import("vue").Ref} gameEvent
@@ -32,84 +40,66 @@ export function useGameEventQueue(gameEvent) {
   // Player call/reveal transition (playersCardMap change)
   // Show winner transition
 
+  /**
+   *
+   * @param {GameEvent} event
+   */
   function push(event) {
     const promise = createQueuePromise(event);
     promiseQueue.push(promise);
   }
 
+  /**
+   *
+   * @param {GameEvent} event
+   */
   async function createQueuePromise(event) {
     await Promise.all(promiseQueue);
     currentGameEvent.value = event;
     await Promise.resolve(event.consumed);
     promiseQueue.shift();
+    if (promiseQueue.length === 0) currentGameEvent.value = null;
   }
 
   watch(gameEvent, (newGameEvent) => {
     const gameEvent = toValue(newGameEvent);
     if (!checkTypes([gameEvent, gameEvent.event], ['object', 'string'])) return;
     switch (gameEvent.event) {
-      case 'INITIALIZE': {
+      case GAME_EVENTS.INITIALIZE: {
         const snapshot = gameEvent.snapshot;
         if (!checkType(snapshot, 'object')) return;
-        const snapGameState = snapshot.gameState;
-        const snapCurrentPlayerTurn = snapshot.currentPlayerTurn;
-        const snapLastHand = snapshot.lastHand;
-        const snapPlayersOrder = snapshot.playersOrder;
-        const snapPlayersNumCards = snapshot.playersNumCards;
-        const snapPlayerHand = snapshot.playerHand;
         if (!checkTypes(
-          [snapGameState, snapCurrentPlayerTurn, snapLastHand, snapPlayersOrder, snapPlayersNumCards, snapPlayerHand],
-          ['string', 'string', 'array', 'array', 'object', 'array']
+          [snapshot.gameState, snapshot.currentPlayerTurn, snapshot.lastHand, snapshot.lastHandPlayer,
+            snapshot.playersOrder, snapshot.playersNumCards, snapshot.playerHand],
+          ['string', 'string', 'array', 'string', 'array', 'object', 'array']
         )) return;
-        push(new GameEvent('INITIALIZE', {
-          playersCardMap: snapPlayersNumCards,
-          playerHand: snapPlayerHand,
-          playersOrder: snapPlayersOrder,
-          currentPlayerTurn: snapCurrentPlayerTurn,
-          lastHand: snapLastHand,
-        }));
+        push(new GameEvent(GAME_EVENTS.INITIALIZE, snapshot));
         break;
       }
-      case 'SETUP': {
-        const newPlayerHand = gameEvent.playerHand;
-        const newPlayersOrder = gameEvent.playersOrder;
-        const newPlayersNumCards = gameEvent.playersNumCards;
-        if (!checkTypes([newPlayerHand, newPlayersOrder, newPlayersNumCards], ['array', 'array', 'object'])) return;
-        push(new GameEvent('SETUP', {
-          playersCardMap: newPlayersNumCards,
-          playerHand: newPlayerHand,
-          playersOrder: newPlayersOrder,
-        }));
+      case GAME_EVENTS.SETUP: {
+        if (!checkTypes([gameEvent.playerHand, gameEvent.playersOrder, gameEvent.playersNumCards],
+          ['array', 'array', 'object'])) return;
+        const { event: _, ...data } = gameEvent;
+        push(new GameEvent(GAME_EVENTS.SETUP, data));
         break;
       }
-      case 'PLAYER_TURN': {
-        const player = gameEvent.player;
-        if (!checkType(player, 'string')) return;
-        push(new GameEvent('PLAYER_TURN', {
-          player: player,
-        }));
+      case GAME_EVENTS.PLAYER_TURN: {
+        if (!checkType(gameEvent.player, 'string')) return;
+        const { event: _, ...data } = gameEvent;
+        push(new GameEvent(GAME_EVENTS.PLAYER_TURN, data));
         break;
       }
-      case 'PLAYER_PROPOSE_HAND': {
-        const player = gameEvent.player;
-        const proposedHand = gameEvent.proposedHand;
-        if (!checkTypes([player, proposedHand], ['string', 'array'])) return;
-        push(new GameEvent('PLAYER_PROPOSE_HAND', {
-          player: player,
-          proposedHand: proposedHand
-        }));
+      case GAME_EVENTS.PLAYER_PROPOSE_HAND: {
+        if (!checkTypes([gameEvent.player, gameEvent.proposedHand], ['string', 'array'])) return;
+        const { event: _, ...data } = gameEvent;
+        push(new GameEvent(GAME_EVENTS.PLAYER_PROPOSE_HAND, data));
         break;
       }
-      case 'REVEAL': {
-        const allPlayersCards = gameEvent.allPlayersCards;
-        const winner = gameEvent.winner;
-        const loser = gameEvent.loser;
-        if (!checkTypes([allPlayersCards, winner, loser], ['object', 'string', 'string'])) return;
-        push(new GameEvent('REVEAL', {
-          allPlayersCards: allPlayersCards,
-          winner: winner,
-          loser: loser
-        }));
+      case GAME_EVENTS.REVEAL: {
+        if (!checkTypes([gameEvent.allPlayersCards, gameEvent.winner, gameEvent.loser],
+          ['object', 'string', 'string'])) return;
+        const { event: _, ...data } = gameEvent;
+        push(new GameEvent(GAME_EVENTS.REVEAL, data));
         break;
       }
     }
