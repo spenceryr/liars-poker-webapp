@@ -1,5 +1,5 @@
 <script setup>
-import { VueElement, createElementBlock, defineProps, shallowRef, watch } from 'vue';
+import { defineProps, shallowRef, watch } from 'vue';
 import { GameEvent, GAME_EVENTS } from '/@/composables/game-event-queue';
 import PlayerListItem from './PlayerListItem.vue';
 import CardsDisplay from './CardsDisplay.vue';
@@ -108,12 +108,14 @@ watch(() => props.currentGameEvent, async (event) => {
       }'
     >
       <template #contextItem>
-        <CardsDisplay v-if='typeof playersCardMap[0] === "number"' :num-cards='playersCardMap[playerID]'/>
-        <CardsDisplay v-else-if='Array.isArray(playersCardMap[0])' :cards='playersCardMap[playerID]'/>
+        <span>
+          <CardsDisplay v-if='typeof playersCardMap[0] === "number"' :num-cards='playersCardMap[playerID]'/>
+          <CardsDisplay v-else-if='Array.isArray(playersCardMap[0])' :cards='playersCardMap[playerID]'/>
+        </span>
       </template>
     </PlayerListItem>
     <div v-if="lastHand && lastPlayerTurn">
-      <h2> {{ lastPlayerTurn }} proposed hand: <CardsDisplay :cards='lastHand'/></h2>
+      <span><h2> {{ lastPlayerTurn }} proposed hand: </h2><CardsDisplay :cards='lastHand'/></span>
       <h3 class='text-body-secondary fst-italic'>Note: Suits are random.</h3>
     </div>
   </ul>

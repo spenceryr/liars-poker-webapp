@@ -73,7 +73,7 @@ const connected = computed(() => wsConnected.value && initialized.value);
         </div>
         <!-- TODO: (spencer) Use a "dynamic component" here to choose the view based on lobby/game state -->
         <ul v-else class="list-group">
-          <PlayerListItem v-for="(playerInfo, playerID) in players"
+          <PlayerListItem v-for="(playerInfo, playerID) of players"
             :player-id="playerID"
             :connection="playerInfo.connection"
             :active="playerID === player"

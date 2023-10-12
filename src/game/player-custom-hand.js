@@ -45,9 +45,9 @@ export class PlayerCustomHand {
     /** @type {CardsBitVector} */
     this.cardsBitVector = CardsBitVector();
     let cardsMap = cards.reduce((acc, curr) => {
-      let currValue = acc[curr];
-      if (currValue === undefined) acc[curr] = 1;
-      else acc[curr] = currValue + curr.value;
+      let currCount = acc.get(curr.value);
+      if (currCount === undefined) acc.set(curr.value, 1);
+      else acc.set(curr.value, currCount + 1);
       return acc;
     }, new Map());
     cardsMap.forEach((count, value) => this.addItem(new PlayerCustomHandItem(value, count)));
