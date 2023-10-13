@@ -21,7 +21,7 @@ function toggleReady() {
 
 <button class="btn"
     :class="localReady ? 'btn-failure' : 'btn-success'"
-    @click="toggleReady()"
+    @click="toggleReady"
   >
     {{ localReady ? "Unready" : "Ready" }}
 </button>

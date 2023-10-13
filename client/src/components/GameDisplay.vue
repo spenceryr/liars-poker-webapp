@@ -128,7 +128,7 @@ watch(() => props.currentGameEvent, async (event) => {
 
 <template>
   <ul class="list-group">
-    <li class="list-group-item container d-flex" v-for="playerID of playersOrder">
+    <li class="list-group-item container d-flex" v-for="playerID of (playersOrder ?? Object.keys(playersInfo))">
       <PlayerReadyDisplay v-if="gameHasEnded" :ready="playersInfo[playerID].ready"></PlayerReadyDisplay>
       <PlayerListItem
         v-player-call-tooltip="playerID === caller"
