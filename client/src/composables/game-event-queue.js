@@ -67,6 +67,7 @@ export function useGameEventQueue(gameEvent) {
     switch (gameEvent.event) {
       case GAME_EVENTS.INITIALIZE: {
         const snapshot = gameEvent.snapshot;
+        if (checkType(snapshot, 'null')) return;
         if (!checkType(snapshot, 'object')) return;
         if (!checkTypes(
           [snapshot.gameState, snapshot.currentPlayerTurn, snapshot.lastHand, snapshot.lastHandPlayer,

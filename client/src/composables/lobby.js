@@ -56,6 +56,7 @@ export function useLobby(lobbyEvent) {
         break;
       }
       case 'ENTER_PRE_GAME_LOBBY': {
+        lastWinner.value = null;
         lobbyScreen.value = 'PRE_GAME';
         break;
       }

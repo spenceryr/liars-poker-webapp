@@ -17,7 +17,6 @@ const CARDS_BITVECTOR_SIZE = Math.ceil((CARD_MAX_VALUE - CARD_MIN_VALUE + 1) * M
  */
 function CardsBitVector() { return new Uint16Array(CARDS_BITVECTOR_SIZE); }
 
-// TODO: (spencer) Most of this probably is client side only. Just need the compare function here.
 export class PlayerCustomHand {
   /**
    *

@@ -13,21 +13,19 @@ defineProps({
 </script>
 
 <template>
-  <li class="list-group-item container d-flex">
-    <div class="row justify-content-between align-items-center">
-      <div class="col">
-        <div class="row">
-          <div class="col">
-            {{ playerID }}
-          </div>
-          <div class="col ms-2">
-            <PlayerConnectionDisplay :conn='connection'/>
-          </div>
+  <div class="row justify-content-between align-items-center">
+    <div class="col">
+      <div class="row">
+        <div class="col">
+          {{ playerID }}
+        </div>
+        <div class="col ms-2">
+          <PlayerConnectionDisplay :conn='connection'/>
         </div>
       </div>
-      <div class="col">
-        <slot name="contextItem"></slot>
-      </div>
     </div>
-  </li>
+    <div class="col">
+      <slot name="contextItem"></slot>
+    </div>
+  </div>
 </template>

@@ -1,0 +1,27 @@
+<script setup>
+import { defineProps, defineEmits, shallowRef } from 'vue';
+
+const props = defineProps({
+  remoteReady: {
+    type: Boolean,
+    required: true
+  }
+});
+
+const emit = defineEmits(['set-ready']);
+
+const localReady = shallowRef(props.remoteReady)
+
+function toggleReady() {
+  localReady.value = !localReady.value;
+  emit('set-ready', localReady.value);
+}
+
+</script>
+
+<button class="btn"
+    :class="localReady ? 'btn-failure' : 'btn-success'"
+    @click="toggleReady()"
+  >
+    {{ localReady ? "Unready" : "Ready" }}
+</button>

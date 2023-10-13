@@ -14,7 +14,7 @@ const props = defineProps({
     required: true
   },
 });
-const emit = defineEmits(['proposed']);
+const emit = defineEmits(['proposed', 'close']);
 
 const customLastHand = new PlayerCustomHand(props.lastHand);
 const proposedCustomHand = new PlayerCustomHand([]);
@@ -59,7 +59,7 @@ function propose() {
     <div class="modal-content">
       <div class="modal-header">
         <h1 class="modal-title fs-5">Propose Hand</h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" aria-label="Close" @click="emit('close')"></button>
       </div>
       <div class="modal-body">
         <div class="container-fluid">
@@ -81,10 +81,9 @@ function propose() {
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary" @click="emit('close')">Close</button>
         <button type="button"
                 class="btn btn-primary"
-                data-bs-dismiss="modal"
                 :disabled="proposedCustomHand.compare(customLastHand) <= 0"
                 @click='propose'
         >

@@ -5,6 +5,15 @@ export function useWebSocket(onJSONMsg) {
   /** @type {WebSocket?} */
   let ws = null;
   var connected = ref(false);
+  /**
+   *
+   * @param {Object<string, any>} obj
+   * @returns
+   */
+  var sendMsg = function (obj) {
+    if (!connected.value) return;
+    ws.send(JSON.stringify(obj))
+  }
 
   // TODO: (spencer) Maybe some exponential backoff + max retries?
   function onClose(ev) {
@@ -26,12 +35,12 @@ export function useWebSocket(onJSONMsg) {
     ws.addEventListener("message", (event) => {
       let msg = null;
       try {
-        msg = JSON.parse(ev.data);
+        msg = JSON.parse(event.data);
       } catch (e) {
-        console.error(`Error processing JSON for message`);
+        console.error(`Error processing JSON for message ${e}`);
         return;
       }
-      onMessage(msg);
+      if (msg) onJSONMsg(msg);
     });
 
     ws.addEventListener('close', onClose);
@@ -51,5 +60,5 @@ export function useWebSocket(onJSONMsg) {
     connected.value = false;
   });
 
-  return { connected };
+  return { connected, sendMsg };
 }

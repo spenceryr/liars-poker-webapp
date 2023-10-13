@@ -131,6 +131,7 @@ export class ClientData {
       case CLIENT_MSGS.RETURN_TO_PRE_GAME_LOBBY: {
         let lobby = this.lobby;
         if (!lobby) return;
+        // TODO: (spencer) Maybe only allow while in post game?
         lobby.returnToPreGameLobby();
         break;
       }

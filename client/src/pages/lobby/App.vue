@@ -1,19 +1,18 @@
 <script setup>
 import 'vite/modulepreload-polyfill'
 import { ref, defineAsyncComponent, shallowRef, computed } from 'vue';
-import PlayerListItem from '/@/components/PlayerListItem.vue'
-import PlayerReadyDisplay from '/@/components/PlayerReadyDisplay.vue';
 import { useWebSocket } from '/@/composables/websocket.js'
 import { useLobby } from '/@/composables/lobby.js'
 import { useGameEventQueue } from '/@/composables/game-event-queue'
+import PreGameLobbyDisplay from '/@/components/PreGameLobbyDisplay.vue'
 
-// const GameView = defineAsyncComponent(() => {
-//   import('/@/components/GameView.vue');
-// });
+const GameDisplay = defineAsyncComponent(async () =>
+  import('/@/components/GameDisplay.vue')
+);
 
 const lobbyEvent = shallowRef();
 const gameEvent = shallowRef();
-const player = ref({});
+const thisPlayerID = ref(null);
 const initialized = shallowRef(false);
 
 function onWSJSONMsg(msg) {
@@ -30,9 +29,7 @@ function onWSJSONMsg(msg) {
           type: 'INITIALIZE',
           snapshot: msg.snapshot.game
         }
-        player.value = {
-          id: msg.snapshot.playerID
-        }
+        thisPlayerID.value = msg.snapshot.playerID;
         initialized.value = true;
       }
       break;
@@ -48,11 +45,45 @@ function onWSJSONMsg(msg) {
   }
 }
 
-const { connected: wsConnected } = useWebSocket(onWSJSONMsg);
-const { players, lastWinner, inPreGameLobby } = useLobby(lobbyEvent);
+const { connected: wsConnected, sendMsg } = useWebSocket(onWSJSONMsg);
+const { playersInfo, lastWinner, lobbyScreen } = useLobby(lobbyEvent);
 const { currentGameEvent } = useGameEventQueue(gameEvent);
 
 const connected = computed(() => wsConnected.value && initialized.value);
+
+const CLIENT_MSGS = {
+  PROPOSED_HAND: "PROPOSED_HAND",
+  CALL_PLAYER: "CALL_PLAYER",
+  READY_UP: "READY_UP",
+  READY_DOWN: "READY_DOWN",
+  RETURN_TO_PRE_GAME_LOBBY: "RETURN_TO_PRE_GAME_LOBBY",
+}
+
+function sendReturnToPreGameLobby() {
+  sendMsg({
+    type: CLIENT_MSGS.RETURN_TO_PRE_GAME_LOBBY
+  });
+}
+
+function sendProposeHand(hand) {
+  sendMsg({
+    type: CLIENT_MSGS.PROPOSED_HAND,
+    proposedHand: hand
+  });
+}
+
+function sendCall(player) {
+  sendMsg({
+    type: CLIENT_MSGS.CALL_PLAYER,
+    playerID: player
+  });
+}
+
+function sendReady(ready) {
+  sendMsg({
+    type: ready ? CLIENT_MSGS.READY_UP : CLIENT_MSGS.READY_DOWN
+  });
+}
 
 </script>
 
@@ -71,19 +102,26 @@ const connected = computed(() => wsConnected.value && initialized.value);
           <h2>Connecting...</h2>
           <span class="spinner-border ml-auto"></span>
         </div>
-        <!-- TODO: (spencer) Use a "dynamic component" here to choose the view based on lobby/game state -->
-        <ul v-else class="list-group">
-          <PlayerListItem v-for="(playerInfo, playerID) of players"
-            :player-id="playerID"
-            :connection="playerInfo.connection"
-            :active="playerID === player"
-          >
-            <template #contextItem>
-              <PlayerReadyDisplay :ready='playerInfo.ready'/>
-            </template>
-          </PlayerListItem>
-          />
-        </ul>
+        <PreGameLobbyDisplay v-else-if="lobbyScreen === 'PRE_GAME'"
+          :players-info="playersInfo"
+          :this-player-id="thisPlayerID"
+          @set-ready="sendReady"
+        />
+        <GameDisplay v-else-if="lobbyScreen === 'IN_GAME' || lobbyScreen === 'POST_GAME'"
+          :current-game-event="currentGameEvent"
+          :players-info="playersInfo"
+          :this-player-id="thisPlayerID"
+          :game-over="lobbyScreen === 'POST_GAME'"
+          @proposed="sendProposeHand"
+          @called="sendCall"
+        />
+        <div v-if="lobbyScreen === 'POST_GAME'">
+          <h2>Game Over!<span v-if="lastWinner"> Winner: {{ lastWinner }}!</span></h2>
+          <div>
+            <button class="btn btn-secondary" @click="sendReturnToPreGameLobby">Return to Lobby</button>
+            <ReadyButton :remote-ready="playersInfo[thisPlayerID].ready" @set-ready="sendReady"/>
+          </div>
+        </div>
       </div>
     </div>
   </main>
