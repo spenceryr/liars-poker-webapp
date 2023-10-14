@@ -20,8 +20,8 @@ export default defineConfig({
     manifest: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'src', 'pages', 'index', 'main.js'),
-        'lobby': resolve(__dirname, 'src', 'pages', 'lobby', 'main.js'),
+        index: resolve(__dirname, 'src', 'pages', 'index', 'main.js'),
+        lobby: resolve(__dirname, 'src', 'pages', 'lobby', 'main.js'),
         'lobby-list': resolve(__dirname, 'src', 'pages', 'lobby-list', 'main.js')
       }
     }

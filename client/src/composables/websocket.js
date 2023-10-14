@@ -10,7 +10,7 @@ export function useWebSocket(onJSONMsg) {
    * @param {Object<string, any>} obj
    * @returns
    */
-  var sendMsg = function (obj) {
+  function sendMsg(obj) {
     if (!connected.value) return;
     ws.send(JSON.stringify(obj))
   }

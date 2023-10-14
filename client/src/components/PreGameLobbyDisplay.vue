@@ -16,7 +16,7 @@ const props = defineProps({
 })
 
 const thisPlayerInfo = computed(() => {
-  return props.playersInfo.value[props.thisPlayerId];
+  return props.playersInfo[props.thisPlayerId];
 })
 </script>
 

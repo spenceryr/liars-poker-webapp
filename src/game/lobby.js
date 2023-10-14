@@ -31,7 +31,7 @@ export class Lobby {
     /** @type {ClientID?} */
     this.lastWinner = null;
     this.stateMachine = new LobbyStateMachine();
-    this.stateMachine.emitter.on("state_change", (state) => {
+    this.stateMachine.emitter.on("state_change", (function onStateChange(state) {
       if (state !== LobbyStateMachine.LOBBY_STATES.PRE_GAME) return;
       // Remove disconnected clients.
       this.clients
@@ -42,7 +42,7 @@ export class Lobby {
         type: "LOBBY_EVENT",
         event: "ENTER_PRE_GAME_LOBBY",
       }));
-    });
+    }).bind(this));
     /** @type {Map<ClientID, NodeJS.Timeout>} */
     this.clientTimeouts = new Map();
     /** @type {NodeJS.Timeout?} */
@@ -53,7 +53,7 @@ export class Lobby {
    * @type {ClientData[]}
    */
   get clients() {
-    return Array.from(this.clientIDs.entries()).map((clientID) => ClientDataStore.get(clientID)).filter((client) => !!client);
+    return Array.from(this.clientIDs.entries()).map(([clientID, ..._]) => ClientDataStore.get(clientID)).filter((client) => !!client);
   }
 
   getLobbySnapshot() {
@@ -62,8 +62,8 @@ export class Lobby {
       playerSnapshots: this.clients.reduce(
         (acc, curr) => Object.assign(acc, {
           [curr.player.playerID]: {
-            connection: curr.isConnected() ? 'CONNECTED' : (curr.isDisconnected ? 'DISCONNECTED' : 'CONNECTING'),
-            ready: client.player.ready
+            connection: curr.isConnected ? 'CONNECTED' : (curr.isDisconnected ? 'DISCONNECTED' : 'CONNECTING'),
+            ready: curr.player.ready
           }
         }),
         {}
@@ -84,6 +84,7 @@ export class Lobby {
     if (this.destroyTimeout) clearTimeout(this.destroyTimeout);
     client.player = new Player(client.clientID);
     client.lobbyID = this.lobbyID;
+    console.debug(`Lobby ${this.lobbyID} client ${client.clientID} joined with playerID: ${client.player.playerID}!`);
     this.sendToAllClients(JSON.stringify({
       type: "LOBBY_EVENT",
       event: "PLAYER_JOINED",
@@ -95,6 +96,7 @@ export class Lobby {
       if (client.isConnected) return;
       this.clientLeft(client);
     }, 30 * 1000, client));
+    this.clientIDs.add(client.clientID);
     return true;
   }
 
@@ -105,6 +107,7 @@ export class Lobby {
    */
   clientLeft(client) {
     if (!this.clientIDs.has(client.clientID)) return;
+    console.debug(`Lobby ${this.lobbyID} client ${client.clientID} left`);
     this.clientIDs.delete(client.clientID);
     client.player = null;
     client.lobbyID = null;
@@ -130,10 +133,14 @@ export class Lobby {
   }
 
   destroyThis() {
+    console.debug(`Lobby ${this.lobbyID} destroyed`);
     this.clientIDs.clear();
     if (this.destroyTimeout) clearTimeout(this.destroyTimeout);
     for (const timeout of this.clientTimeouts) clearTimeout(timeout);
-    this.stopListenForGameEvents();
+    if (this.game) {
+      this.stopListenForGameEvents();
+      this.game = null;
+    }
     this.stateMachine.emitter.removeAllListeners();
     LobbyStore.delete(this.lobbyID);
   }
@@ -144,6 +151,7 @@ export class Lobby {
    */
   clientDisconnect(client) {
     if (!this.clientIDs.has(client.clientID)) return;
+    console.debug(`Lobby ${this.lobbyID} client ${client.clientID} disconnect`);
     client.player.ready = false;
     this.sendToAllClients(JSON.stringify({
       type: "LOBBY_EVENT",
@@ -181,6 +189,7 @@ export class Lobby {
    */
   clientConnected(client) {
     if (!this.clientIDs.has(client.clientID)) return false;
+    console.debug(`Lobby ${this.lobbyID} client ${client.clientID} connected`);
     let timeout = this.clientTimeouts.get(client.clientID);
     if (timeout) {
       clearTimeout(timeout);
@@ -203,6 +212,8 @@ export class Lobby {
   clientReady(client) {
     if (!this.clientIDs.has(client.clientID)) return;
     if (client.player.ready) return;
+    client.player.ready = true;
+    console.debug(`Lobby ${this.lobbyID} client ${client.clientID} ready`);
     this.sendToAllClients(JSON.stringify({
       type: "LOBBY_EVENT",
       event: "PLAYER_READY",
@@ -219,6 +230,8 @@ export class Lobby {
   clientUnReady(client) {
     if (!this.clientIDs.has(client.clientID)) return;
     if (!client.player.ready) return;
+    client.player.ready = false;
+    console.debug(`Lobby ${this.lobbyID} client ${client.clientID} unready`);
     this.sendToAllClients(JSON.stringify({
       type: "LOBBY_EVENT",
       event: "PLAYER_UNREADY",
@@ -247,11 +260,13 @@ export class Lobby {
   returnToPreGameLobby() {
     // TODO: (spencer) Maybe allow this during game?
     if (!this.stateMachine.verifyState(LobbyStateMachine.LOBBY_STATES.POST_GAME)) return;
+    console.debug(`Lobby ${this.lobbyID} return to pre game lobby`);
     this.stateMachine.transition(LobbyStateMachine.LOBBY_STATES.PRE_GAME);
   }
 
   startGame() {
     if (this.inGame) return;
+    console.debug(`Lobby ${this.lobbyID} starting game`);
     // Cleanup clients, so don't use `clients`.
     this.clientIDs.forEach((clientID) => {
       let client = ClientDataStore.get(clientID);
@@ -259,6 +274,7 @@ export class Lobby {
     });
     if (this.clientIDs.size < Game.MIN_PLAYERS || this.clientIDs.size > Game.MAX_PLAYERS) {
       this.stateMachine.transition(LobbyStateMachine.LOBBY_STATES.PRE_GAME);
+      console.debug(`Lobby ${this.lobbyID} could not start game: invalid player amount`);
       return;
     }
     /** @type {Player} */
@@ -270,6 +286,7 @@ export class Lobby {
     this.game = new Game(players, startingPlayer);
     this.listenForGameEvents();
     if (!this.game.start()) {
+      console.debug(`Lobby ${this.lobbyID} start game failed`);
       this.stopListenForGameEvents();
       this.game = null;
       this.stateMachine.transition(LobbyStateMachine.LOBBY_STATES.PRE_GAME);
@@ -303,7 +320,8 @@ export class Lobby {
      *
      * @param {Player[]} players
      */
-    [GAME_EVENT.SETUP]: (players) => {
+    [GAME_EVENT.SETUP]: (function onGameSetup(players) {
+      console.debug(`Lobby ${this.lobbyID} received setup game event`);
       players.forEach((player) => {
         try {
           ClientDataStore.get(player.clientID).sendMessage(JSON.stringify({
@@ -318,23 +336,25 @@ export class Lobby {
         }
       });
       this.game.playerStartTurn();
-    },
+    }).bind(this),
     /**
      *
      * @param {Player} player
      */
-    [GAME_EVENT.PLAYER_TURN]: (player) => {
+    [GAME_EVENT.PLAYER_TURN]: (function onGamePlayerTurn(player) {
+      console.debug(`Lobby ${this.lobbyID} received player turn game event`);
       this.sendToAllClients(JSON.stringify({
         type: "GAME_EVENT",
         event: "PLAYER_TURN",
         player: player.playerID
       }));
-    },
+    }).bind(this),
     /**
      *
      * @param {{player: Player, proposedHand: PlayerCustomHand}}
      */
-    [GAME_EVENT.PLAYER_PROPOSE_HAND]: ({player, proposedHand}) => {
+    [GAME_EVENT.PLAYER_PROPOSE_HAND]: (function onGamePlayerProposeHand({player, proposedHand}) {
+      console.debug(`Lobby ${this.lobbyID} received player propose hand game event`);
       this.sendToAllClients(JSON.stringify({
         type: "GAME_EVENT",
         event: "PLAYER_PROPOSE_HAND",
@@ -342,12 +362,13 @@ export class Lobby {
         proposedHand: proposedHand.cards.map((card) => card.toObj()),
       }));
       this.game.playerStartTurn();
-    },
+    }).bind(this),
     /**
      *
      * @param {{loser: Player, winner: Player}}
      */
-    [GAME_EVENT.REVEAL]: ({loser, winner}) => {
+    [GAME_EVENT.REVEAL]: (function onGameReveal({loser, winner}) {
+      console.debug(`Lobby ${this.lobbyID} received reveal game event`);
       this.sendToAllClients(JSON.stringify({
         type: "GAME_EVENT",
         event: "REVEAL",
@@ -361,14 +382,17 @@ export class Lobby {
         winner: winner.playerID,
       }));
       this.game.startNextRoundOrEndGame();
-    },
+    }).bind(this),
     /**
      *
      * @param {Player?} winner
      */
-    [GAME_EVENT.GAME_OVER]: (winner) => {
-      this.game = null;
-      this.stopListenForGameEvents();
+    [GAME_EVENT.GAME_OVER]: (function onGameGameOver(winner) {
+      console.debug(`Lobby ${this.lobbyID} received game over game event`);
+      if (this.game) {
+        this.stopListenForGameEvents();
+        this.game = null;
+      }
       this.lastWinner = winner?.clientID ?? null;
       this.sendToAllClients(JSON.stringify({
         // TODO: (spencer) Maybe include reason why game ended?
@@ -377,10 +401,11 @@ export class Lobby {
         winner: winner?.playerID ?? null,
       }));
       this.stateMachine.transition(LobbyStateMachine.LOBBY_STATES.POST_GAME);
-    }
+    }).bind(this)
   }
 
   sendToAllClients(data) {
+    console.debug(`Lobby ${this.lobbyID} sending msg to all clients: ${JSON.stringify(data)}`);
     this.clients.forEach((client) => {
       try {
         client.sendMessage(data);
@@ -440,42 +465,42 @@ function shuffleArray(array) {
   }
 }
 
-export class LobbyStore {
+export const LobbyStore = {
   /** @type {Map<LobbyID, Lobby>} */
-  static lobbyMapping = new Map();
+  lobbyMapping: new Map(),
 
   /**
    *
    * @param {LobbyID} lobbyID
    * @param {Lobby} lobby
    */
-  static set(lobbyID, lobby) {
+  set(lobbyID, lobby) {
     this.lobbyMapping.set(lobbyID, lobby)
-  }
+  },
 
   /**
    *
    * @param {LobbyID} lobbyID
    * @returns {boolean}
    */
-  static delete(lobbyID) {
+  delete(lobbyID) {
     return this.lobbyMapping.delete(lobbyID);
-  }
+  },
 
   /**
    *
    * @param {LobbyID} lobbyID
    * @returns {Lobby | undefined}
    */
-  static get(lobbyID) {
+  get(lobbyID) {
     return this.lobbyMapping.get(lobbyID);
-  }
+  },
 
-  static entries() {
+  entries() {
     return this.lobbyMapping.entries();
-  }
+  },
 
-  static get size() {
+  get size() {
     return this.lobbyMapping.size;
   }
 }

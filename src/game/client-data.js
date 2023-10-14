@@ -3,6 +3,7 @@ import { WebSocket } from "ws";
 import { LeakyBucket } from "./leaky-bucket.js";
 import { LobbyStore } from "./lobby.js";
 import { Card } from "./card.js";
+import assert from "node:assert";
 
 /**
  * @typedef {string} ClientID
@@ -36,11 +37,12 @@ export class ClientData {
 
   /**
    *
-   * @param {Array|Number|Object|String|ArrayBuffer|Buffer|DataView|TypedArray} data
+   * @param {string} data
    * @returns
    */
   sendMessage(data) {
     if (!this.isConnected) return;
+    console.debug(`Sending message to ${this.clientID}: ${data}`);
     this.ws?.send(data);
   }
 
@@ -50,17 +52,24 @@ export class ClientData {
    * @returns {boolean}
    */
   connectedToWS(ws) {
-    if (ws.readyState !== ws.OPEN) return false;
+    if (ws.readyState !== ws.OPEN) {
+      console.debug(`Client ${this.clientID} connected but socket is not open!`);
+      return false;
+    }
     this.ws = ws;
-    ws.on("close", this.onClose);
-    ws.on("message", this.onMessage);
+    ws.on("close", this.onClose.bind(this));
+    ws.on("message", this.onMessage.bind(this));
     let lobby = this.lobby;
-    if (!lobby) return false;
+    if (!lobby) {
+      console.debug(`Client ${this.clientID} connected without lobby!`);
+      return false;
+    }
     let gameSnapshot = (this.lobby.inGame && this.lobby.game?.getGameSnapshot()) || null;
     // Add 'playerHand' prop to gameSnapshot to provide this player's hand.
     if (gameSnapshot) {
       gameSnapshot['playerHand'] = this.player.cards.map((card) => card.toObj());
     }
+    console.debug(`Client ${this.clientID} connected`);
     this.sendMessage(JSON.stringify({
       type: "CLIENT_EVENT",
       event: "CONNECTION_ACK",
@@ -70,6 +79,7 @@ export class ClientData {
         game: gameSnapshot
       }
     }));
+    assert(lobby.clientConnected(this));
     return true;
   }
 
@@ -78,19 +88,28 @@ export class ClientData {
    * @param {LobbyID} lobbyID
    */
   joinLobby(lobbyID) {
-    if (this.lobbyID === lobbyID) return true;
+    console.debug(`Client ${this.clientID} join lobby ${lobbyID}`);
+    if (this.lobbyID === lobbyID) {
+      console.debug(`Client ${this.clientID} already in lobby ${lobbyID}!`);
+      return true;
+    }
     // Leave current lobby.
     this.leaveLobby();
     let lobby = LobbyStore.get(lobbyID);
-    if (!lobby) return false;
+    if (!lobby) {
+      console.debug(`Client ${this.clientID} could not find lobby ${lobbyID}!`);
+      return false;
+    }
     return lobby.clientJoined(this);
   }
 
   leaveLobby() {
+    console.debug(`Client ${this.clientID} leave lobby ${this.lobbyID}`);
     this.lobby?.clientLeft(this);
   }
 
   onClose() {
+    console.debug(`Client ${this.clientID} disconnect`);
     this.lobby?.clientDisconnect(this);
   }
 
@@ -103,11 +122,12 @@ export class ClientData {
     if (!this.leakyBucket.fill()) return;
     let msg = null;
     try {
-      msg = JSON.parse(ev.data);
+      msg = JSON.parse(ev);
     } catch (e) {
-      console.error(`Error processing JSON from client ${this.clientID}`);
+      console.error(`Error processing JSON ${ev} from client ${this.clientID}: ${e}`);
       return;
     }
+    console.debug(`Client ${this.clientID} received msg ${JSON.stringify(msg)}`);
     this.processMsg(msg);
   }
 
@@ -183,34 +203,34 @@ export class ClientData {
   }
 }
 
-export class ClientDataStore {
+export const ClientDataStore = {
   /** @type {Map<ClientID, ClientData>} */
-  static clientMapping = new Map();
+  clientMapping: new Map(),
 
   /**
    *
    * @param {ClientID} clientID
    * @param {ClientData} clientData
    */
-  static set(clientID, clientData) {
+  set(clientID, clientData) {
     this.clientMapping.set(clientID, clientData)
-  }
+  },
 
   /**
    *
    * @param {ClientID} clientID
    * @returns {boolean}
    */
-  static delete(clientID) {
+  delete(clientID) {
     return this.clientMapping.delete(clientID);
-  }
+  },
 
   /**
    *
    * @param {ClientID} clientID
    * @returns {ClientData | undefined}
    */
-  static get(clientID) {
+  get(clientID) {
     return this.clientMapping.get(clientID);
   }
 }

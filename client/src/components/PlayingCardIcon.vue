@@ -9,7 +9,7 @@ const props = defineProps({
 });
 
 const icon = defineAsyncComponent(() =>
-  import(`/@/assets/playing-cards-icons/${props.name}.svg`)
+  import(`../assets/playing-cards-icons/${props.name}.svg`)
 );
 </script>
 

@@ -1,11 +1,11 @@
-function typeOf( obj ) {
-  return ({}).toString.call( obj ).match(/\s(\w+)/)[1].toLowerCase();
+function typeOf(obj) {
+  return ({}).toString.call(obj).match(/\s(\w+)/)[1].toLowerCase();
 }
 
 /**
  *
  * @param {any[]} values
- * @param {string[] | string} types
+ * @param {string[] | string | Array<string | string[]>} types
  * @returns
  */
 export function checkTypes(values, types) {
@@ -31,9 +31,12 @@ export function checkTypes(values, types) {
 export function checkType(value, types) {
   if (Array.isArray(types)) {
     for (const type of types) {
-      if (typeOf(value) !== type) return true;
+      if (typeOf(value) === type) return true;
     }
+    console.debug(`checkType failed! typeOf(${value}) !== ${types.toString()}`);
     return false;
   }
-  return typeOf(value) === types;
+  let result = typeOf(value) === types;
+  if (!result) console.debug(`checkType failed! typeOf(${value}) !== ${types.toString()}`);
+  return result;
 }

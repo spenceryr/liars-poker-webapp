@@ -17,16 +17,17 @@ const initialized = shallowRef(false);
 
 function onWSJSONMsg(msg) {
   if (!msg.type || typeof msg.type !== 'string') return;
+  console.debug(`Received message: ${JSON.stringify(msg)}`);
   switch (msg.type) {
     case 'CLIENT_EVENT': {
       if (msg.event === 'CONNECTION_ACK') {
         if (!msg.snapshot) return;
         lobbyEvent.value = {
-          type: 'INITIALIZE',
+          event: 'INITIALIZE',
           snapshot: msg.snapshot.lobby
         }
         gameEvent.value = {
-          type: 'INITIALIZE',
+          event: 'INITIALIZE',
           snapshot: msg.snapshot.game
         }
         thisPlayerID.value = msg.snapshot.playerID;
@@ -99,8 +100,10 @@ function sendReady(ready) {
           <h1 class="fw-bold">Liar's Poker For Da Boys</h1>
         </div>
         <div v-if="!connected">
-          <h2>Connecting...</h2>
-          <span class="spinner-border ml-auto"></span>
+          <h2>
+            <span class="spinner-border ml-auto"></span>
+            Connecting...
+          </h2>
         </div>
         <PreGameLobbyDisplay v-else-if="lobbyScreen === 'PRE_GAME'"
           :players-info="playersInfo"

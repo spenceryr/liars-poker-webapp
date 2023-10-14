@@ -5,6 +5,7 @@ import EventEmitter from "events";
 import { StateMachine } from "./state-machine.js";
 import { Player } from "./player.js";
 import { PlayingCards } from "./playing-cards.js";
+import { randomUUID } from "node:crypto";
 
 export const GAME_EVENT = {
   SETUP: "SETUP",
@@ -43,8 +44,10 @@ export class Game {
     /** @type {Player?} */
     this.lastHandPlayer = null;
     this.stateMachine = new GameStateMachine();
-    this.stateMachine.emitter.on("state_change", this.handleStateChange);
+    this.stateMachine.emitter.on("state_change", this.handleStateChange.bind(this));
     this.emitter = new EventEmitter();
+    this.gameID = randomUUID();
+    console.debug(`Game ${this.gameID} created ${JSON.stringify(this)}`);
   }
 
   getGameSnapshot() {
@@ -66,6 +69,7 @@ export class Game {
         break;
       }
       case GAME_STATES.SETUP: {
+        console.debug(`Game ${this.gameID} transition to setup`);
         this.playingCards = new PlayingCards(this.numCardsInPlay);
         let numCardsPerPlayer = this.players.map((player) => player.numCards);
         let hands = this.playingCards.deal(numCardsPerPlayer);
@@ -74,10 +78,12 @@ export class Game {
         break;
       }
       case GAME_STATES.PLAYER_TURN: {
+        console.debug(`Game ${this.gameID} player turn ${this.players[this.currentPlayerIndexTurn].playerID}`);
         this.emitter.emit(GAME_EVENT.PLAYER_TURN, this.players[this.currentPlayerIndexTurn]);
         break;
       }
       case GAME_STATES.PLAYER_TURN_END: {
+        console.debug(`Game ${this.gameID} player turn end ${this.players[this.currentPlayerIndexTurn].playerID}`);
         let player = this.players[this.currentPlayerIndexTurn];
         this.currentPlayerIndexTurn = this.playerIndexOffset(1);
         this.emitter.emit(
@@ -90,6 +96,7 @@ export class Game {
         break;
       }
       case GAME_STATES.REVEAL: {
+        console.debug(`Game ${this.gameID} reveal, caller: ${this.callingPlayer}, called: ${this.calledPlayer}`);
         const isItThere = this.playingCards.isItThere(this.lastHand.cards);
         let [winner, loser] = isItThere ? [this.calledPlayer, this.callingPlayer] : [this.callingPlayer, this.calledPlayer];
         loser.numCards -= 1;
@@ -108,6 +115,7 @@ export class Game {
             break;
           }
         }
+        console.debug(`Game ${this.gameID} game over, winner: ${winner}`);
         this.emitter.emit(GAME_EVENT.GAME_OVER.id, winner)
         break;
       }
@@ -153,6 +161,7 @@ export class Game {
 
   // Game control flow methods
   start() {
+    console.debug(`Game ${this.gameID} start`);
     return this.stateMachine.transition(GameStateMachine.GAME_STATES.SETUP);
   }
 
@@ -200,10 +209,12 @@ export class Game {
    * @returns
    */
   playerProposedHand(player, hand) {
+    console.debug(`Game ${this.gameID} player ${player.playerID} proposed hand ${hand.cards.toString()}`);
     if (!this.stateMachine.verifyState(GameStateMachine.GAME_STATES.PLAYER_TURN)) return;
     let playerIndex = this.getPlayerIndex(player);
     if (playerIndex !== this.currentPlayerIndexTurn) return;
     if (this.lastHand && hand.compare(this.lastHand) <= 0) return;
+    console.debug(`Game ${this.gameID} player hand was approved`);
     this.lastHand = hand;
     this.lastHandPlayer = player;
     this.stateMachine.transition(GameStateMachine.GAME_STATES.PLAYER_TURN_END);

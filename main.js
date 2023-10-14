@@ -17,12 +17,19 @@ import bcrypt from "bcrypt"
 import "dotenv/config"
 import nunjucks from "nunjucks"
 
-import { ClientData, ClientDataStore } from "./js/client-data.js";
-import { Lobby, LobbyStore } from "./js/lobby.js";
+import { ClientData, ClientDataStore } from "./src/game/client-data.js";
+import { Lobby, LobbyStore } from "./src/game/lobby.js";
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const manifest = (() => {
+  const manifestPath = path.join(__dirname, "public", "dist", "manifest.json");
+  const manifestFile = readFileSync(manifestPath);
+
+  return JSON.parse(manifestFile);
+})();
 
 /** @type {string} */
 var SERVER_KEY_PATH = process.env.SERVER_KEY_PATH;
@@ -42,6 +49,8 @@ assert(SESSION_STORE_PATH);
 /** @type {string} */
 var SESSION_STORE_SECRET = process.env.SESSION_STORE_SECRET;
 assert(SESSION_STORE_SECRET);
+var ENVIRONMENT = process.env.NODE_ENV;
+assert(ENVIRONMENT);
 
 /**
  * @param {Express} app
@@ -67,7 +76,7 @@ function createWSServer(httpsServer, sessionRouter) {
     sessionRouter(request, {}, () => {
       const client = getClientFromReq(request);
       if (!client) {
-        console.error("No client!");
+        console.error(`Attempted upgrade with no client!`);
         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
         socket.destroy;
         return;
@@ -175,19 +184,15 @@ function expressSetup(sessionRouter) {
     };
   }
 
-  app.use("/js",
-    express.static(path.join(__dirname, "public", "js"), { redirect: false, index: false, dotfiles: "deny" })
-  );
-
-  app.use("/auth/js",
-    authRequired(null),
-    express.static(path.join(__dirname, "public", "auth", "js"), { redirect: false, index: false, dotfiles: "deny" })
+  app.use("/assets",
+  // TODO: (spencer) Put this behind auth for post-landing page items.
+    express.static(path.join(__dirname, "public", "dist"), { redirect: false, index: false, dotfiles: "deny" })
   );
 
   app.get("/",
     isAuthenticated(restoreClientSession()),
     (req, res) => {
-      res.render("index.njk");
+      res.render("index.njk", { environment: ENVIRONMENT, manifest });
     },
     handleRenderError()
   );
@@ -195,20 +200,22 @@ function expressSetup(sessionRouter) {
   app.post("/login",
     isAuthenticated(restoreClientSession()),
     async function verifyLogin(req, res) {
-    let password = req.body.password;
-    if (!password || typeof password !== "string") return res.sendStatus(400);
-    try {
-      let result = await bcrypt.compare(password, SITE_PASSWORD);
-      if (!result) throw Error();
-    } catch (_) {
-      return res.status(200).json({ result: "incorrect" })
-    }
-    let clientID = randomUUID();
-    let client = new ClientData(clientID);
-    ClientDataStore.set(clientID, client);
-    assert(req.session.liarsClientID === undefined);
-    req.session.liarsClientID = clientID;
-    return res.status(200).json({ result: "correct", forward: "/lobby-list" });
+      let password = req.body.password;
+      if (!password || typeof password !== "string") return res.sendStatus(400);
+      try {
+        let result = await bcrypt.compare(password, SITE_PASSWORD);
+        if (!result) throw Error();
+      } catch (_) {
+        return res.status(200).json({ result: "incorrect" })
+      }
+      if (!req.session.liarsClientID) {
+        let clientID = randomUUID();
+        let client = new ClientData(clientID);
+        ClientDataStore.set(clientID, client);
+        assert(req.session.liarsClientID === undefined);
+        req.session.liarsClientID = clientID;
+      }
+      return res.status(200).json({ result: "correct", forward: "/lobby-list" });
   });
 
   let authRouter = express.Router();
@@ -243,7 +250,7 @@ function expressSetup(sessionRouter) {
     function goToLobby(req, res) {
       let lobbyID = req.params.lobbyID;
       if (!req.liarsClient.joinLobby(lobbyID)) return res.redirect("/lobby-list");
-      res.render("lobby.njk", { lobby: LobbyStore.get(lobbyID) });
+      res.render("lobby.njk", { lobby: LobbyStore.get(lobbyID), environment: ENVIRONMENT, manifest });
     },
     handleRenderError()
   );

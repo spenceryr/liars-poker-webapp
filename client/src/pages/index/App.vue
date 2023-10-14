@@ -44,7 +44,6 @@ function loginWithPassword() {
       window.location.replace(json.forward);
       return "";
     }
-
     throw 'Error occurred with login.'
   }, () => { throw 'Error occurred with login.' })
   .catch((result) => {
