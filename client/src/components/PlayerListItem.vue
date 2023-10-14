@@ -1,7 +1,6 @@
 <script setup>
-import { defineProps, computed } from 'vue'
+import { defineProps } from 'vue'
 import PlayerConnectionDisplay from '/@/components/PlayerConnectionDisplay.vue'
-import PlayerReadyDisplay from '/@/components/PlayerReadyDisplay.vue'
 
 defineProps({
   playerID: String,

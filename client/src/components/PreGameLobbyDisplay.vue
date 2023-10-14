@@ -1,6 +1,7 @@
 <script setup>
 import { defineProps, defineEmits, computed } from 'vue';
 import ReadyButton from '/@/components/ReadyButton.vue'
+import PlayerListItem from './PlayerListItem.vue';
 
 defineEmits(['set-ready']);
 
