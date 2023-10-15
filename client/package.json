@@ -20,6 +20,7 @@
     "eslint-plugin-vue": "^9.17.0",
     "sass": "^1.69.2",
     "vite": "^4.4.9",
+    "vite-plugin-css-injected-by-js": "^3.3.0",
     "vite-svg-loader": "^4.0.0"
   }
 }

@@ -1,10 +1,10 @@
 <script setup>
-import 'vite/modulepreload-polyfill'
 import { ref, defineAsyncComponent, shallowRef, computed } from 'vue';
-import { useWebSocket } from '/@/composables/websocket.js'
-import { useLobby } from '/@/composables/lobby.js'
-import { useGameEventQueue } from '/@/composables/game-event-queue'
-import PreGameLobbyDisplay from '/@/components/PreGameLobbyDisplay.vue'
+import { useWebSocket } from '/@/composables/websocket.js';
+import { useLobby } from '/@/composables/lobby.js';
+import { useGameEventQueue } from '/@/composables/game-event-queue';
+import PreGameLobbyDisplay from '/@/components/PreGameLobbyDisplay.vue';
+import detectColorMode from "/@/utilities/detect-color-mode.js";
 
 const GameDisplay = defineAsyncComponent(async () =>
   import('/@/components/GameDisplay.vue')
@@ -14,6 +14,8 @@ const lobbyEvent = shallowRef();
 const gameEvent = shallowRef();
 const thisPlayerID = ref(null);
 const initialized = shallowRef(false);
+
+detectColorMode();
 
 function onWSJSONMsg(msg) {
   if (!msg.type || typeof msg.type !== 'string') return;
@@ -89,28 +91,24 @@ function sendReady(ready) {
 </script>
 
 <template>
-  <header>
-    <title>Liar's Poker</title>
-  </header>
-
   <main>
     <div class="d-flex justify-content-center align-items-center">
       <div class="container min-vh-100">
         <div class="row m-3 justify-content-center align-items-start">
           <h1 class="fw-bold">Liar's Poker For Da Boys</h1>
         </div>
-        <div v-if="!connected">
+        <div class="row m-3" v-if="!connected">
           <h2>
             <span class="spinner-border ml-auto"></span>
             Connecting...
           </h2>
         </div>
-        <PreGameLobbyDisplay v-else-if="lobbyScreen === 'PRE_GAME'"
+        <PreGameLobbyDisplay class="row m-3" v-else-if="lobbyScreen === 'PRE_GAME'"
           :players-info="playersInfo"
           :this-player-id="thisPlayerID"
           @set-ready="sendReady"
         />
-        <GameDisplay v-else-if="lobbyScreen === 'IN_GAME' || lobbyScreen === 'POST_GAME'"
+        <GameDisplay class="row m-3" v-else-if="lobbyScreen === 'IN_GAME' || lobbyScreen === 'POST_GAME'"
           :current-game-event="currentGameEvent"
           :players-info="playersInfo"
           :this-player-id="thisPlayerID"
@@ -118,7 +116,7 @@ function sendReady(ready) {
           @proposed="sendProposeHand"
           @called="sendCall"
         />
-        <div v-if="lobbyScreen === 'POST_GAME'">
+        <div class="row m-3" v-if="lobbyScreen === 'POST_GAME'">
           <h2>Game Over!<span v-if="lastWinner"> Winner: {{ lastWinner }}!</span></h2>
           <div>
             <button class="btn btn-secondary" @click="sendReturnToPreGameLobby">Return to Lobby</button>

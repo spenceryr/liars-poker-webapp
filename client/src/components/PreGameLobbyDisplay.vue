@@ -2,6 +2,7 @@
 import { defineProps, defineEmits, computed } from 'vue';
 import ReadyButton from '/@/components/ReadyButton.vue'
 import PlayerListItem from './PlayerListItem.vue';
+import PlayerReadyDisplay from './PlayerReadyDisplay.vue';
 
 defineEmits(['set-ready']);
 
@@ -23,14 +24,14 @@ const thisPlayerInfo = computed(() => {
 
 <template>
   <ul class="list-group">
-    <li class="list-group-item container d-flex" v-for="(playerInfo, playerID) in playersInfo">
+    <li class="list-group-item container-fluid" v-for="(playerInfo, playerID) in playersInfo">
       <PlayerListItem
         :player-id="playerID"
         :connection="playerInfo.connection"
         :active="playerID === thisPlayerId"
       >
         <template #contextItem>
-          <PlayerReadyDisplay :ready='playerInfo.ready'/>
+          <PlayerReadyDisplay class="text-end" :ready='playerInfo.ready'/>
         </template>
       </PlayerListItem>
     </li>

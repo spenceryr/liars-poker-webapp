@@ -7,7 +7,7 @@ defineProps({
 </script>
 
 <template>
-  <i v-if='conn === "disconnected"' class="bi bi-wifi-off"></i>
-  <span v-else-if='conn === "connected"'></span>
-  <span v-else-if='conn === "connecting"' class="spinner-border spinner-border-sm"></span>
+  <i v-if='conn === "DISCONNECTED"' class="bi bi-wifi-off"></i>
+  <span v-else-if='conn === "CONNECTED"'></span>
+  <span v-else-if='conn === "CONNECTING"' class="spinner-border spinner-border-sm"></span>
 </template>

@@ -26,9 +26,10 @@ export class PlayingCards {
     return numCardsPerPlayer.map((numCards) => {
       let playerCards = [];
       for (let i = 0; i < numCards; i++) {
-        let index = Math.floor(Math.random() * (numCardsInPlay - i));
+        let index = Math.floor(Math.random() * numCardsInPlay);
         playerCards.push(cardsInPlayCopy[index]);
         cardsInPlayCopy.splice(index, 1);
+        numCardsInPlay -= 1;
       }
       return playerCards;
     });

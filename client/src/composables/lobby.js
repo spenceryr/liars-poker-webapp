@@ -43,7 +43,7 @@ export function useLobby(lobbyEvent) {
         const playerID = lobbyEvent.player;
         if (!checkType(playerID, 'string')) return;
         console.debug(`Lobby processing PLAYER_JOINED ${playerID}`);
-        setPlayer(playerID, 'DISCONNECTED', false);
+        setPlayer(playerID, 'CONNECTING', false);
         break;
       }
       case 'PLAYER_DISCONNECT': {

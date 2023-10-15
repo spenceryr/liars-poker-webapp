@@ -109,6 +109,7 @@ export class Lobby {
     if (!this.clientIDs.has(client.clientID)) return;
     console.debug(`Lobby ${this.lobbyID} client ${client.clientID} left`);
     this.clientIDs.delete(client.clientID);
+    let playerID = client.player.playerID;
     client.player = null;
     client.lobbyID = null;
     if (client.clientID === this.lastWinner) this.lastWinner = null;
@@ -124,7 +125,7 @@ export class Lobby {
     this.sendToAllClients(JSON.stringify({
       type: "LOBBY_EVENT",
       event: "PLAYER_LEFT",
-      player: client.player.playerID
+      player: playerID
     }));
     // TODO: (spencer) Only end game if player still had cards.
     if (this.inGame) {
@@ -178,6 +179,7 @@ export class Lobby {
         this.destroyTimeout = setTimeout(() => this.destroyThis(), 60 * 1000);
       }
     } else {
+      // TODO: (spencer) Maybe don't immediately remove (incase they refresh page).
       this.clientLeft(client);
     }
   }
@@ -248,6 +250,7 @@ export class Lobby {
     // Stop this timer if no one is ready.
     // Only start game if num players >= 2
     // Call this when players ready or unready(?).
+    // TODO: (spencer) Add countdown before starting.
     if (this.clients.every((client) => client.player.ready)) this.startGame();
   }
 

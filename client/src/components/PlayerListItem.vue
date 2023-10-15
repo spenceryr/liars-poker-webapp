@@ -3,7 +3,7 @@ import { defineProps } from 'vue'
 import PlayerConnectionDisplay from '/@/components/PlayerConnectionDisplay.vue'
 
 defineProps({
-  playerID: String,
+  playerId: String,
   connection: String,
   ready: Boolean,
   active: Boolean
@@ -16,7 +16,7 @@ defineProps({
     <div class="col">
       <div class="row">
         <div class="col">
-          {{ playerID }}
+          {{ playerId }}
         </div>
         <div class="col ms-2">
           <PlayerConnectionDisplay :conn='connection'/>

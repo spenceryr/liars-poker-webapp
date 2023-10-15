@@ -1,13 +1,15 @@
-import { defineConfig } from 'vite'
-import svgLoader from 'vite-svg-loader'
-import vue from '@vitejs/plugin-vue'
-import { resolve, join } from 'node:path'
+import { defineConfig } from 'vite';
+import svgLoader from 'vite-svg-loader';
+import vue from '@vitejs/plugin-vue';
+import { resolve, join } from 'node:path';
+import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
-    svgLoader()
+    svgLoader(),
+    cssInjectedByJsPlugin({ relativeCSSInjection: true })
   ],
   resolve: {
     alias: [
@@ -16,6 +18,7 @@ export default defineConfig({
   },
   appType: 'mpa',
   build: {
+    minify: false,
     target: 'es2015',
     manifest: true,
     rollupOptions: {
@@ -25,5 +28,5 @@ export default defineConfig({
         'lobby-list': resolve(__dirname, 'src', 'pages', 'lobby-list', 'main.js')
       }
     }
-  }
+  },
 })

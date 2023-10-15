@@ -21,7 +21,7 @@ function toggleReady() {
 
 <template>
   <button class="btn"
-      :class="localReady ? 'btn-failure' : 'btn-success'"
+      :class="localReady ? 'btn-danger' : 'btn-success'"
       @click="toggleReady"
     >
       {{ localReady ? "Unready" : "Ready" }}

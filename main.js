@@ -97,7 +97,10 @@ function createWSServer(httpsServer, sessionRouter) {
      */
     function connection(ws, request, client) {
       let result = client.connectedToWS(ws);
-      assert(result);
+      if (!result) {
+        // TODO: (spencer) Create custom response code/reason to allow client to react.
+        ws.close();
+      }
     });
 
   return wss;
@@ -219,6 +222,7 @@ function expressSetup(sessionRouter) {
   });
 
   let authRouter = express.Router();
+  // TODO: (spencer) Maybe consider no cache for these endpoints?
   app.use(authRouter);
   authRouter.use(authRequired());
 

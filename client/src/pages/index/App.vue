@@ -1,24 +1,12 @@
 <script setup>
-import 'vite/modulepreload-polyfill'
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue';
+import detectColorMode from "/@/utilities/detect-color-mode.js";
 
 var password = ref('');
 var loginResult = ref('');
 var inputDisabled = ref(false);
 
-onMounted(() => {
-  let colorSchemeMatchMedia = window.matchMedia('(prefers-color-scheme: dark)');
-
-  colorSchemeMatchMedia.addEventListener('change',({ matches }) => {
-    if (matches) {
-      document.querySelector('html').setAttribute('data-bs-theme', "dark");
-    } else {
-      document.querySelector('html').setAttribute('data-bs-theme', "light");
-    }
-  });
-  let userColorModePref = colorSchemeMatchMedia.matches ? "dark" : "light";
-  document.querySelector('html').setAttribute('data-bs-theme', userColorModePref);
-});
+detectColorMode();
 
 function loginWithPassword() {
   // inputDisabled.value = true;
@@ -60,10 +48,6 @@ function loginWithPassword() {
 </script>
 
 <template>
-  <header>
-    <title>Liar's Poker</title>
-  </header>
-
   <main>
     <div class="d-flex justify-content-center align-items-center">
       <div class="container min-vh-100">

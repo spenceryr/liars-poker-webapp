@@ -7,6 +7,8 @@ defineProps({
 </script>
 
 <template>
-  <i v-if="ready" class="bi bi-check-circle-fill text-success"></i>
-  <i v-else class="bi bi-question-lg text-secondary"></i>
+  <span class="pe-2">Ready:
+    <i v-if="ready" class="bi bi-check-circle-fill text-success"></i>
+    <i v-else class="bi bi-question-lg text-secondary"></i>
+  </span>
 </template>
