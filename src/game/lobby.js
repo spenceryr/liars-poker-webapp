@@ -164,13 +164,13 @@ export class Lobby {
       this.clientTimeouts.set(
         client.clientID,
         setTimeout((client) => {
-          if (!client.isDisconnected || !client.isDisconnecting) return;
+          if (!client.isDisconnected && !client.isDisconnecting) return;
           this.clientLeft(client);
         }, 60 * 1000, client)
       );
     } else if (this.stateMachine.verifyState(LobbyStateMachine.LOBBY_STATES.POST_GAME)) {
       let numConnectedClients = this.clients.filter((client) => {
-        return !client.isDisconnected || !client.isDisconnecting;
+        return !client.isDisconnected && !client.isDisconnecting;
       }).length;
       // Destroy this object if all clients disconnected for 1 minute.
       // Otherwise ignore post game client leaves to give them infinite time to connect before the game starts.
@@ -303,22 +303,25 @@ export class Lobby {
   }
 
   listenForGameEvents() {
-    this.game.emitter.on(GAME_EVENT.SETUP, this.gameEventHandlers[GAME_EVENT.SETUP]);
-    this.game.emitter.on(GAME_EVENT.PLAYER_TURN, this.gameEventHandlers[GAME_EVENT.PLAYER_TURN]);
-    this.game.emitter.on(GAME_EVENT.PLAYER_PROPOSE_HAND, this.gameEventHandlers[GAME_EVENT.PLAYER_PROPOSE_HAND]);
-    this.game.emitter.on(GAME_EVENT.REVEAL, this.gameEventHandlers[GAME_EVENT.REVEAL]);
-    this.game.emitter.on(GAME_EVENT.GAME_OVER, this.gameEventHandlers[GAME_EVENT.GAME_OVER]);
+    for (const event in GAME_EVENT) {
+      this.game.emitter.on(event, this.gameEventHandlers[event]);
+    }
   }
 
   stopListenForGameEvents() {
-    this.game.emitter.off(GAME_EVENT.SETUP, this.gameEventHandlers[GAME_EVENT.SETUP]);
-    this.game.emitter.off(GAME_EVENT.PLAYER_TURN, this.gameEventHandlers[GAME_EVENT.PLAYER_TURN]);
-    this.game.emitter.off(GAME_EVENT.PLAYER_PROPOSE_HAND, this.gameEventHandlers[GAME_EVENT.PLAYER_PROPOSE_HAND]);
-    this.game.emitter.off(GAME_EVENT.REVEAL, this.gameEventHandlers[GAME_EVENT.REVEAL]);
-    this.game.emitter.off(GAME_EVENT.GAME_OVER, this.gameEventHandlers[GAME_EVENT.GAME_OVER]);
+    for (const event in GAME_EVENT) {
+      this.game.emitter.off(event, this.gameEventHandlers[event]);
+    }
   }
 
   gameEventHandlers = {
+    [GAME_EVENT.GAME_START]: (function onGameStart() {
+      console.debug(`Lobby ${this.lobbyID} received game start event`);
+      this.sendToAllClients(JSON.stringify({
+        type: "LOBBY_EVENT",
+        event: "GAME_START"
+      }))
+    }).bind(this),
     /**
      *
      * @param {Player[]} players

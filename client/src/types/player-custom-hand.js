@@ -8,8 +8,8 @@
 
 const CARD_MAX_VALUE = 14;
 const CARD_MIN_VALUE = 2;
-const MAX_HAND_COUNT = 5;
-const CARDS_BITVECTOR_SIZE = Math.ceil((CARD_MAX_VALUE - CARD_MIN_VALUE + 1) * MAX_HAND_COUNT / 16);
+const MAX_SINGLE_VALUE_COUNT = 4;
+const CARDS_BITVECTOR_SIZE = Math.ceil((CARD_MAX_VALUE - CARD_MIN_VALUE + 1) * MAX_SINGLE_VALUE_COUNT / 16);
 
 /**
  *
@@ -31,7 +31,7 @@ export class PlayerCustomHand {
     cards.forEach((c) => this.addCard(c));
   }
 
-  static get MAX_COUNT() { return 5; }
+  static get MAX_HAND_SIZE() { return 5; }
 
   /**
    *
@@ -39,8 +39,8 @@ export class PlayerCustomHand {
    * @returns
    */
   addCard(card) {
-    if (this.cards.length >= PlayerCustomHand.MAX_COUNT) return false;
-    if (this.cardsValueToCountMap[card.value] >= MAX_HAND_COUNT) return false;
+    if (this.cards.length >= PlayerCustomHand.MAX_HAND_SIZE) return false;
+    if (this.cardsValueToCountMap[card.value] >= MAX_SINGLE_VALUE_COUNT) return false;
     this.cards.push(card);
     let oldCount = this.cardsValueToCountMap[card.value];
     let newCount = oldCount + 1;
@@ -58,7 +58,7 @@ export class PlayerCustomHand {
   removeCard(card) {
     let index = this.cards.findIndex((c) => c.value === card.value);
     if (index === -1) return false;
-    delete this.cards[index];
+    this.cards.splice(index, 1);
     let oldCount = this.cardsValueToCountMap[card.value];
     let newCount = oldCount - 1;
     this.cardsValueToCountMap[card.value] = newCount;

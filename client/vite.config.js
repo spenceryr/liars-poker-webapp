@@ -13,10 +13,12 @@ export default defineConfig({
   ],
   resolve: {
     alias: [
-      { find: '/@', replacement: resolve(__dirname, 'src') }
+      { find: '/@', replacement: resolve(__dirname, 'src') },
+      { find: '@', replacement: resolve(__dirname, 'src') },
     ]
   },
   appType: 'mpa',
+  base: '/assets/',
   build: {
     minify: false,
     target: 'es2015',
@@ -26,7 +28,14 @@ export default defineConfig({
         index: resolve(__dirname, 'src', 'pages', 'index', 'main.js'),
         lobby: resolve(__dirname, 'src', 'pages', 'lobby', 'main.js'),
         'lobby-list': resolve(__dirname, 'src', 'pages', 'lobby-list', 'main.js')
+      },
+      output: {
+        manualChunks: (id) => {
+          if (id.startsWith(resolve(__dirname, 'src', 'assets', 'playing-card-icons'))) {
+            return 'playing-card-icons';
+          }
+        }
       }
-    }
+    },
   },
 })

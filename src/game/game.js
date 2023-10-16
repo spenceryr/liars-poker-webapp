@@ -8,6 +8,7 @@ import { PlayingCards } from "./playing-cards.js";
 import { randomUUID } from "node:crypto";
 
 export const GAME_EVENT = {
+  GAME_START: "GAME_START",
   SETUP: "SETUP",
   PLAYER_TURN: "PLAYER_TURN",
   PLAYER_PROPOSE_HAND: "PLAYER_PROPOSE_HAND",
@@ -162,6 +163,7 @@ export class Game {
   // Game control flow methods
   start() {
     console.debug(`Game ${this.gameID} start`);
+    this.emitter.emit(GAME_EVENT.GAME_START);
     return this.stateMachine.transition(GameStateMachine.GAME_STATES.SETUP);
   }
 
@@ -192,6 +194,7 @@ export class Game {
    */
   playerCalled(callingPlayer, calledPlayerID) {
     if (!this.stateMachine.verifyState(GameStateMachine.GAME_STATES.PLAYER_TURN)) return;
+    if (!this.lastHand) return;
     let index = this.players.findIndex((player) => player.playerID === calledPlayerID);
     if(index !== this.playerIndexOffset(-1)) return;
     let calledPlayer = this.players[index];

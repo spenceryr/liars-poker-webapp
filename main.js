@@ -73,6 +73,7 @@ function createHTTPSServer(app) {
 function createWSServer(httpsServer, sessionRouter) {
   const wss = new WebSocketServer({ clientTracking: false, noServer: true });
   httpsServer.on('upgrade', function upgrade(request, socket, head) {
+    // TODO: (spencer) Rate limit all requests (including upgrades) at higher level than server.
     sessionRouter(request, {}, () => {
       const client = getClientFromReq(request);
       if (!client) {

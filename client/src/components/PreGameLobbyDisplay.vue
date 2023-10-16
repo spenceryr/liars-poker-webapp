@@ -23,6 +23,7 @@ const thisPlayerInfo = computed(() => {
 </script>
 
 <template>
+  <!-- TODO: (spencer) Add header to columns or just a title -->
   <ul class="list-group">
     <li class="list-group-item container-fluid" v-for="(playerInfo, playerID) in playersInfo">
       <PlayerListItem
@@ -31,7 +32,7 @@ const thisPlayerInfo = computed(() => {
         :active="playerID === thisPlayerId"
       >
         <template #contextItem>
-          <PlayerReadyDisplay class="text-end" :ready='playerInfo.ready'/>
+          <PlayerReadyDisplay :ready='playerInfo.ready'/>
         </template>
       </PlayerListItem>
     </li>

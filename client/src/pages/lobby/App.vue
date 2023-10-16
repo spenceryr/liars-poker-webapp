@@ -2,7 +2,7 @@
 import { ref, defineAsyncComponent, shallowRef, computed } from 'vue';
 import { useWebSocket } from '/@/composables/websocket.js';
 import { useLobby } from '/@/composables/lobby.js';
-import { useGameEventQueue } from '/@/composables/game-event-queue';
+import { useGameEventQueue } from '/@/composables/game-event-queue.js';
 import PreGameLobbyDisplay from '/@/components/PreGameLobbyDisplay.vue';
 import detectColorMode from "/@/utilities/detect-color-mode.js";
 

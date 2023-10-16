@@ -16,6 +16,7 @@ export function useLobby(lobbyEvent) {
 
   watch(lobbyEvent, (newLobbyEvent) => {
     const lobbyEvent = toValue(newLobbyEvent);
+    if (!lobbyEvent) return;
     if (!checkTypes([lobbyEvent, lobbyEvent.event], ['object', 'string'])) return;
     switch (lobbyEvent.event) {
       case 'INITIALIZE': {
@@ -57,7 +58,7 @@ export function useLobby(lobbyEvent) {
         const playerID = lobbyEvent.player;
         if (!checkType(playerID, 'string')) return;
         console.debug(`Lobby processing PLAYER_LEFT ${playerID}`);
-        delete playersInfo[playerID];
+        delete playersInfo.value[playerID];
         break;
       }
       case 'ENTER_PRE_GAME_LOBBY': {
@@ -80,6 +81,11 @@ export function useLobby(lobbyEvent) {
         setPlayer(playerID, 'CONNECTED', false);
         break;
       }
+      case 'GAME_START': {
+        console.debug(`Lobby processing GAME_START`);
+        lobbyScreen.value = 'IN_GAME';
+        break;
+      }
       case 'GAME_OVER': {
         const winner = lobbyEvent.winner;
         if (checkType(winner, 'string')) lastWinner.value = winner;
@@ -89,7 +95,7 @@ export function useLobby(lobbyEvent) {
         break;
       }
     }
-  });
+  }, { immediate: true });
 
   return { playersInfo, lastWinner, lobbyScreen };
 }

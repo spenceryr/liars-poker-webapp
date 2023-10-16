@@ -16,14 +16,14 @@ defineProps({
     <div class="col">
       <div class="row">
         <div class="col">
-          {{ playerId }}
-        </div>
-        <div class="col ms-2">
-          <PlayerConnectionDisplay :conn='connection'/>
+          <div>
+            {{ playerId }}
+            <PlayerConnectionDisplay class="mx-2" :conn='connection'/>
+          </div>
         </div>
       </div>
     </div>
-    <div class="col">
+    <div class="col text-end">
       <slot name="contextItem"></slot>
     </div>
   </div>
