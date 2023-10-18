@@ -53,13 +53,8 @@ export function useGameState(thisPlayerID, currentEvent, gameOver) {
         console.debug(`Game processing PLAYER_TURN: ${JSON.stringify(event.data)}`);
         const data = event.data;
         currentPlayerTurn.value = data.player;
-        if (data.player === toValue(thisPlayerID)) {
-          showProposeHandModal.value = true;
-          canCall.value = false;
-        }
-        else {
-          canCall.value = true;
-        }
+        showProposeHandModal.value = data.player === toValue(thisPlayerID);
+        canCall.value = lastPlayerTurn.value && lastPlayerTurn.value !== toValue(thisPlayerID);
         break;
       }
       case GAME_EVENTS.PLAYER_PROPOSE_HAND: {
@@ -78,10 +73,11 @@ export function useGameState(thisPlayerID, currentEvent, gameOver) {
         currentPlayerTurn.value = null;
         canCall.value = false;
         caller.value = [data.winner, data.loser].filter((player) => lastPlayerTurn.value !== player)[0];
-        await new Promise((resolve) => setTimeout(resolve, 1 * 1000));
+        console.debug(`Setting caller to ${caller.value}`);
+        await new Promise((resolve) => setTimeout(resolve, 3 * 1000));
         winner.value = data.winner;
         loser.value = data.loser;
-        await new Promise((resolve) => setTimeout(resolve, 3 * 1000));
+        await new Promise((resolve) => setTimeout(resolve, 5 * 1000));
         break;
       }
     }

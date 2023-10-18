@@ -41,7 +41,7 @@ export class PlayerCustomHand {
   constructor(cards) {
     /** @type {Card[]} */
     this.cards = [];
-    this.cardsValueToCountMap = Array(14).fill(0);
+    this.cardsValueToCountMap = Array(Card.MAX_VALUE + 1).fill(0);
     /** @type {CardsBitVector} */
     this.cardsBitVector = CardsBitVector();
     let cardsMap = cards.reduce((acc, curr) => {
@@ -95,9 +95,9 @@ export class PlayerCustomHand {
    * @param {PlayerCustomHand} against
    */
   compare(against) {
-    for (let i = CARDS_BITVECTOR_SIZE; i >= 0; i--) {
+    for (let i = CARDS_BITVECTOR_SIZE - 1; i >= 0; i--) {
       if (this.cardsBitVector[i] === against.cardsBitVector[i]) continue;
-      return this.cardsBitVector[i] > this.cardsBitVector[i] ? 1 : -1;
+      return (this.cardsBitVector[i] > against.cardsBitVector[i]) ? 1 : -1;
     }
     return 0;
   }

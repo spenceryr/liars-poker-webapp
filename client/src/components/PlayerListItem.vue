@@ -17,7 +17,7 @@ defineProps({
       <div class="row">
         <div class="col">
           <div>
-            {{ playerId }}
+            <p class="player-display-name-text d-inline-flex">{{ playerId }}</p>
             <PlayerConnectionDisplay class="mx-2" :conn='connection'/>
           </div>
         </div>

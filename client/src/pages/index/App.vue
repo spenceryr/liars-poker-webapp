@@ -54,8 +54,8 @@ function loginWithPassword() {
         <div class="row m-3 justify-content-center align-items-start">
           <h1 class="fw-bold">Liar's Poker For Da Boys</h1>
         </div>
-        <form @submit.prevent="loginWithPassword" class="row my-3 align-items-start justify-content-center">
-          <div class="col-4 offset-4">
+        <form @submit.prevent="loginWithPassword" class="row m-3 align-items-start justify-content-center">
+          <div class="col-12 col-md-4 offset-md-4">
             <input
               :class='{"is-invalid": loginResult !== "" }'
               :disabled="inputDisabled"
@@ -69,7 +69,7 @@ function loginWithPassword() {
             />
             <div id="validationResponse" class="invalid-feedback">{{ loginResult }}</div>
           </div>
-          <div class="col-4">
+          <div class="col mt-3 mt-md-0 col-md-4">
             <input :disabled="inputDisabled" class="btn btn-primary" type="submit" value="Submit"/>
           </div>
         </form>

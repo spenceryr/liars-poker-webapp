@@ -83,6 +83,7 @@ export function useLobby(lobbyEvent) {
       }
       case 'GAME_START': {
         console.debug(`Lobby processing GAME_START`);
+        for (const playerID in playersInfo.value) playersInfo.value[playerID].ready = false;
         lobbyScreen.value = 'IN_GAME';
         break;
       }

@@ -23,19 +23,17 @@ export class Game {
   /**
    *
    * @param {Player[]} players
-   * @param {Player} startingPlayer
    */
-  constructor(players, startingPlayer) {
+  constructor(players) {
     let numPlayers = players.length;
     assert(numPlayers <= Game.MAX_PLAYERS);
-    let startingPlayerIndex = players.indexOf(startingPlayer);
-    assert(startingPlayerIndex >= 0);
     /** @type {Player[]} */
     this.players = players;
+    this.players.forEach((player) => player.numCards = Player.NUM_STARTING_CARDS);
     this.numCardsInPlay = numPlayers * Player.NUM_STARTING_CARDS;
     /** @type {PlayingCards?} */
     this.playingCards = null;
-    this.currentPlayerIndexTurn = startingPlayerIndex;
+    this.currentPlayerTurnIndex = 0;
     /** @type {Player?} */
     this.callingPlayer = null;
     /** @type {Player?} */
@@ -44,6 +42,8 @@ export class Game {
     this.lastHand = null;
     /** @type {Player?} */
     this.lastHandPlayer = null;
+    /** @type {Player?} */
+    this.lastWinner = null;
     this.stateMachine = new GameStateMachine();
     this.stateMachine.emitter.on("state_change", this.handleStateChange.bind(this));
     this.emitter = new EventEmitter();
@@ -55,7 +55,7 @@ export class Game {
     // TODO: (spencer) Create class.
     return {
       gameState: this.stateMachine.state,
-      currentPlayerTurn: this.players[this.currentPlayerIndexTurn].playerID,
+      currentPlayerTurn: this.players[this.currentPlayerTurnIndex].playerID,
       lastHand: this.lastHand?.cards.map((card) => card.toObj()),
       lastHandPlayer: this.lastHandPlayer?.playerID ?? null,
       playersOrder: this.players.map((player) => player.playerID),
@@ -71,22 +71,28 @@ export class Game {
       }
       case GAME_STATES.SETUP: {
         console.debug(`Game ${this.gameID} transition to setup`);
+        this.currentPlayerTurnIndex = this.getPlayerIndex(this.lastWinner ?? 0) ?? 0;
         this.playingCards = new PlayingCards(this.numCardsInPlay);
+        this.lastHand = null;
+        this.lastHandPlayer = null;
+        this.calledPlayer = null;
+        this.callingPlayer = null;
         let numCardsPerPlayer = this.players.map((player) => player.numCards);
         let hands = this.playingCards.deal(numCardsPerPlayer);
+        assert(hands);
         hands.forEach((cards, i) => this.players[i].cards = cards);
         this.emitter.emit(GAME_EVENT.SETUP, this.players);
         break;
       }
       case GAME_STATES.PLAYER_TURN: {
-        console.debug(`Game ${this.gameID} player turn ${this.players[this.currentPlayerIndexTurn].playerID}`);
-        this.emitter.emit(GAME_EVENT.PLAYER_TURN, this.players[this.currentPlayerIndexTurn]);
+        console.debug(`Game ${this.gameID} player turn ${this.players[this.currentPlayerTurnIndex].playerID}`);
+        this.emitter.emit(GAME_EVENT.PLAYER_TURN, this.players[this.currentPlayerTurnIndex]);
         break;
       }
       case GAME_STATES.PLAYER_TURN_END: {
-        console.debug(`Game ${this.gameID} player turn end ${this.players[this.currentPlayerIndexTurn].playerID}`);
-        let player = this.players[this.currentPlayerIndexTurn];
-        this.currentPlayerIndexTurn = this.playerIndexOffset(1);
+        console.debug(`Game ${this.gameID} player turn end ${this.players[this.currentPlayerTurnIndex].playerID}`);
+        let player = this.players[this.currentPlayerTurnIndex];
+        this.currentPlayerTurnIndex = this.playerIndexOffset(1);
         this.emitter.emit(
           GAME_EVENT.PLAYER_PROPOSE_HAND,
           {
@@ -102,6 +108,7 @@ export class Game {
         let [winner, loser] = isItThere ? [this.calledPlayer, this.callingPlayer] : [this.callingPlayer, this.calledPlayer];
         loser.numCards -= 1;
         this.numCardsInPlay -= 1;
+        this.lastWinner = winner;
         this.emitter.emit(GAME_EVENT.REVEAL, { "loser": loser, "winner": winner });
         break;
       }
@@ -117,7 +124,7 @@ export class Game {
           }
         }
         console.debug(`Game ${this.gameID} game over, winner: ${winner}`);
-        this.emitter.emit(GAME_EVENT.GAME_OVER.id, winner)
+        this.emitter.emit(GAME_EVENT.GAME_OVER, winner)
         break;
       }
     }
@@ -130,8 +137,11 @@ export class Game {
    * @returns
    */
   playerIndexOffset(offset) {
+    if (offset === 0) return this.isPlayerPlaying(this.currentPlayerTurnIndex) ? this.currentPlayerTurnIndex : 0;
     for (let i = 0; i < this.players.length; i++) {
-      const index = (this.currentPlayerIndexTurn + i + offset) % this.players.length;
+      let directionalIndex = offset > 0 ? i : (i * -1);
+      // https://stackoverflow.com/questions/4467539/javascript-modulo-gives-a-negative-result-for-negative-numbers
+      const index = (((this.currentPlayerTurnIndex + directionalIndex + offset) % this.players.length) + this.players.length) % this.players.length;
       if (this.isPlayerPlaying(this.players[index]))
         return index;
     }
@@ -140,10 +150,10 @@ export class Game {
   /**
    *
    * @param {Player} player
-   * @returns
+   * @returns {number | null}
    */
   getPlayerIndex(player) {
-    if (!this.isPlayerPlaying(player)) return -1;
+    if (!this.isPlayerPlaying(player)) return null;
     return this.players.indexOf(player);
   }
 
@@ -157,7 +167,7 @@ export class Game {
   }
 
   numPlayingPlayers() {
-    return this.players.reduce((acc, curr) => this.isPlayerPlaying(curr) ? acc : (acc + 1), 0);
+    return this.players.reduce((acc, curr) => this.isPlayerPlaying(curr) ? (acc + 1) : acc, 0);
   }
 
   // Game control flow methods
@@ -193,13 +203,14 @@ export class Game {
    * @returns
    */
   playerCalled(callingPlayer, calledPlayerID) {
+    console.debug(`Game ${this.gameID} player ${callingPlayer} called ${calledPlayerID}`);
     if (!this.stateMachine.verifyState(GameStateMachine.GAME_STATES.PLAYER_TURN)) return;
     if (!this.lastHand) return;
     let index = this.players.findIndex((player) => player.playerID === calledPlayerID);
     if(index !== this.playerIndexOffset(-1)) return;
     let calledPlayer = this.players[index];
     let callingPlayerIndex = this.getPlayerIndex(callingPlayer);
-    if (callingPlayerIndex < 0) return;
+    if (callingPlayerIndex === null) return;
     if (callingPlayer === calledPlayer) return;
     this.callingPlayer = callingPlayer;
     this.calledPlayer = calledPlayer;
@@ -212,10 +223,11 @@ export class Game {
    * @returns
    */
   playerProposedHand(player, hand) {
-    console.debug(`Game ${this.gameID} player ${player.playerID} proposed hand ${hand.cards.toString()}`);
+    console.debug(`Game ${this.gameID} player ${player.playerID} proposed hand ${JSON.stringify(hand)}`);
     if (!this.stateMachine.verifyState(GameStateMachine.GAME_STATES.PLAYER_TURN)) return;
     let playerIndex = this.getPlayerIndex(player);
-    if (playerIndex !== this.currentPlayerIndexTurn) return;
+    if (playerIndex !== this.currentPlayerTurnIndex) return;
+    if (hand.cards.length <= 0) return;
     if (this.lastHand && hand.compare(this.lastHand) <= 0) return;
     console.debug(`Game ${this.gameID} player hand was approved`);
     this.lastHand = hand;

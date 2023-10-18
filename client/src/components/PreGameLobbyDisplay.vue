@@ -37,5 +37,5 @@ const thisPlayerInfo = computed(() => {
       </PlayerListItem>
     </li>
   </ul>
-  <ReadyButton :remote-ready="thisPlayerInfo.ready" @set-ready="(ready) => $emit('set-ready', ready)"/>
+  <ReadyButton class="mt-3" :remote-ready="thisPlayerInfo.ready" @set-ready="(ready) => $emit('set-ready', ready)"/>
 </template>

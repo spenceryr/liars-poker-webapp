@@ -4,6 +4,7 @@ import { LeakyBucket } from "./leaky-bucket.js";
 import { LobbyStore } from "./lobby.js";
 import { Card } from "./card.js";
 import assert from "node:assert";
+import { PlayerCustomHand } from "./player-custom-hand.js";
 
 /**
  * @typedef {string} ClientID
@@ -177,7 +178,7 @@ export class ClientData {
           if (!card.value || typeof card.value !== "number") return;
           cards.push(new Card(card.value));
         }
-        game.playerProposedHand(this.player, cards);
+        game.playerProposedHand(this.player, new PlayerCustomHand(cards));
         break;
       }
     }

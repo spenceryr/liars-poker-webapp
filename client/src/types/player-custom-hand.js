@@ -1,8 +1,4 @@
 /**
- * @typedef {{value: number, suit: string}} Card
- */
-
-/**
  * @typedef {Uint16Array} CardsBitVector
  */
 
@@ -20,12 +16,12 @@ function CardsBitVector() { return new Uint16Array(CARDS_BITVECTOR_SIZE); }
 export class PlayerCustomHand {
   /**
    *
-   * @param {Card[]} cards
+   * @param {number[]} cards
    */
   constructor(cards) {
-    /** @type {Card[]} */
+    /** @type {number[]} */
     this.cards = [];
-    this.cardsValueToCountMap = Array(14).fill(0);
+    this.cardsValueToCountMap = Array(CARD_MAX_VALUE + 1).fill(0);
     /** @type {CardsBitVector} */
     this.cardsBitVector = CardsBitVector();
     cards.forEach((c) => this.addCard(c));
@@ -35,35 +31,38 @@ export class PlayerCustomHand {
 
   /**
    *
-   * @param {Card} card
+   * @param {number} card
    * @returns
    */
   addCard(card) {
     if (this.cards.length >= PlayerCustomHand.MAX_HAND_SIZE) return false;
-    if (this.cardsValueToCountMap[card.value] >= MAX_SINGLE_VALUE_COUNT) return false;
+    if (this.cardsValueToCountMap[card] >= MAX_SINGLE_VALUE_COUNT) return false;
+    console.debug(`Adding card ${JSON.stringify(card)} to ${JSON.stringify(this)}`);
     this.cards.push(card);
-    let oldCount = this.cardsValueToCountMap[card.value];
+    let oldCount = this.cardsValueToCountMap[card];
     let newCount = oldCount + 1;
-    this.cardsValueToCountMap[card.value] = newCount;
-    if (oldCount > 0) cardsBitVectorClear(this.cardsBitVector, card.value, oldCount);
-    cardsBitVectorSet(this.cardsBitVector, card.value, newCount);
+    this.cardsValueToCountMap[card] = newCount;
+    if (oldCount > 0) cardsBitVectorClear(this.cardsBitVector, card, oldCount);
+    cardsBitVectorSet(this.cardsBitVector, card, newCount);
     return true;
   }
 
   /**
    *
-   * @param {Card} card
+   * @param {number} card
    * @returns
    */
   removeCard(card) {
-    let index = this.cards.findIndex((c) => c.value === card.value);
+    let index = this.cards.findIndex((c) => c === card);
     if (index === -1) return false;
+    console.debug(`Removing card ${JSON.stringify(card)} from ${JSON.stringify(this)}`);
     this.cards.splice(index, 1);
-    let oldCount = this.cardsValueToCountMap[card.value];
+    let oldCount = this.cardsValueToCountMap[card];
     let newCount = oldCount - 1;
-    this.cardsValueToCountMap[card.value] = newCount;
-    cardsBitVectorClear(this.cardsBitVector, card.value, oldCount);
-    if (newCount > 0) cardsBitVectorSet(this.cardsBitVector, card.value, newCount);
+    this.cardsValueToCountMap[card] = newCount;
+    cardsBitVectorClear(this.cardsBitVector, card, oldCount);
+    if (newCount > 0) cardsBitVectorSet(this.cardsBitVector, card, newCount);
+    return true;
   }
 
   /**
@@ -71,9 +70,10 @@ export class PlayerCustomHand {
    * @param {PlayerCustomHand} against
    */
   compare(against) {
-    for (let i = CARDS_BITVECTOR_SIZE; i >= 0; i--) {
+    console.debug(`Comparing this custom hand ${JSON.stringify(this)} vs ${JSON.stringify(against)}`);
+    for (let i = CARDS_BITVECTOR_SIZE - 1; i >= 0; i--) {
       if (this.cardsBitVector[i] === against.cardsBitVector[i]) continue;
-      return this.cardsBitVector[i] > this.cardsBitVector[i] ? 1 : -1;
+      return (this.cardsBitVector[i] > against.cardsBitVector[i]) ? 1 : -1;
     }
     return 0;
   }

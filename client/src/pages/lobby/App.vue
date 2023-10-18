@@ -5,6 +5,7 @@ import { useLobby } from '/@/composables/lobby.js';
 import { useGameEventQueue } from '/@/composables/game-event-queue.js';
 import PreGameLobbyDisplay from '/@/components/PreGameLobbyDisplay.vue';
 import detectColorMode from "/@/utilities/detect-color-mode.js";
+import ReadyButton from '/@/components/ReadyButton.vue';
 
 const GameDisplay = defineAsyncComponent(async () =>
   import('/@/components/GameDisplay.vue')
@@ -118,8 +119,8 @@ function sendReady(ready) {
         />
         <div class="row m-3" v-if="lobbyScreen === 'POST_GAME'">
           <h2>Game Over!<span v-if="lastWinner"> Winner: {{ lastWinner }}!</span></h2>
-          <div>
-            <button class="btn btn-secondary" @click="sendReturnToPreGameLobby">Return to Lobby</button>
+          <div class="d-inline-flex flex-row mt-3">
+            <button class="btn btn-secondary me-3" @click="sendReturnToPreGameLobby">Return to Lobby</button>
             <ReadyButton :remote-ready="playersInfo[thisPlayerID].ready" @set-ready="sendReady"/>
           </div>
         </div>

@@ -3,28 +3,46 @@ import { defineProps, computed } from 'vue'
 import PlayingCardIcon from '/@/components/PlayingCardIcon.vue'
 
 /**
- * @property {{value: number, suit: string}} cards
+ * @typedef {{value: number, suit: undefined, id: number}} UniqueCard
  */
+/**
+ * @typedef {{value: number, suit: undefined}} Card
+ */
+
 const props = defineProps({
   numCards: Number,
   cards: {
-    /** @type import('vue').PropType<{value: number, suit: string}[]> */
+    /** @type import('vue').PropType<Card[]> */
     type: Array,
     required: false
   }
-})
+});
 
-const sortedCards = computed(() => {
-  return props.cards.sort((c1, c2) => c1.value - c2.value);
-})
+let cardIDCounter = 0;
+/**
+ *
+ * @param {number} value
+ * @returns {UniqueCard}
+ */
+function createUniqueCard(value) {
+  return {
+    value: value,
+    id: cardIDCounter++,
+    suit: undefined
+  };
+}
+
+const sortedUniqueCards = computed(() => {
+  return props.cards.map((card) => createUniqueCard(card.value)).sort((c1, c2) => c1.value - c2.value);
+});
 
 </script>
 
 <template>
   <template v-if='cards'>
-    <PlayingCardIcon v-for='card of sortedCards' :card='card'/>
+    <PlayingCardIcon class="m-1" width="34.5" height="48" v-for='card of sortedUniqueCards' :card='card' :key="card.id"/>
   </template>
   <template v-else>
-    <PlayingCardIcon :card='null'/> x {{ numCards }}
+    <PlayingCardIcon width="34.5" height="48" :card='null'/> x {{ numCards }}
   </template>
 </template>

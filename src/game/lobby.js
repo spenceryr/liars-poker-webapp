@@ -286,7 +286,11 @@ export class Lobby {
     let players = this.clients.map((client) => client.player);
     shuffleArray(players);
     if (!startingPlayer) startingPlayer = players[Math.floor(Math.random() * players.length)];
-    this.game = new Game(players, startingPlayer);
+    // Makes sure player order starts with starting player
+    while (players[0] !== startingPlayer) {
+      players.push(players.shift());
+    }
+    this.game = new Game(players);
     this.listenForGameEvents();
     if (!this.game.start()) {
       console.debug(`Lobby ${this.lobbyID} start game failed`);
@@ -317,6 +321,7 @@ export class Lobby {
   gameEventHandlers = {
     [GAME_EVENT.GAME_START]: (function onGameStart() {
       console.debug(`Lobby ${this.lobbyID} received game start event`);
+      this.clients.forEach((client) => client.ready = false);
       this.sendToAllClients(JSON.stringify({
         type: "LOBBY_EVENT",
         event: "GAME_START"

@@ -31,6 +31,7 @@ function convertCardToIconName(card) {
   return `${value ?? 0}${suit.toLowerCase()}`
 }
 
+// TODO: (spencer) There's probably a good way to programatically generate the svg's with a suit and a number.
 const icon = defineAsyncComponent(() =>
   import(`@/assets/playing-card-icons/${convertCardToIconName(props.card)}.svg`)
 );

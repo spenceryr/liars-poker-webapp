@@ -29,21 +29,25 @@ const props = defineProps({
 
 defineEmits(['proposed', 'called']);
 
-const toolTipBind = (el, binding) => {
+/**
+ *
+ * @param {Element} el
+ * @param {import('vue').DirectiveBinding} binding
+ */
+const vPlayerCallTooltip = (el, binding) => {
   if (binding.value) {
-    Tooltip.getOrCreateInstance(el, {
-      placement: 'left',
+    console.debug(`Creating tooltip!`);
+    Tooltip.getOrCreateInstance(el.querySelector('.player-display-name-text'), {
+      placement: 'right',
       title: 'Call!',
-      trigger: 'manual'
+      trigger: 'manual',
+      template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner fs-3 text-danger"></div></div>'
     }).show();
   } else {
-    Tooltip.getInstance(el)?.dispose();
+    console.debug(`Removing tooltip!`);
+    Tooltip.getInstance(el)?.hide();
   }
 };
-const vPlayerCallTooltip = {
-  mounted: toolTipBind,
-  update: toolTipBind,
-}
 
 const {
   playersToCardsMap,
@@ -64,19 +68,20 @@ const {
 
 <template>
   <ul class="list-group">
-    <li class="list-group-item container-fluid" v-for="playerID of (playersOrder ?? Object.keys(playersInfo))">
+    <li class="list-group-item container-fluid" v-for="playerID of (playersOrder ?? Object.keys(playersInfo))" :key="playerID"
+      :class='{
+        "active": playerID === currentPlayerTurn,
+        "border": playerID === winner || playerID === loser,
+        "border-5": playerID === winner || playerID === loser,
+        "border-success": playerID === winner,
+        "border-failure": playerID === loser
+      }'
+    >
       <PlayerReadyDisplay v-if="gameHasEnded" :ready="playersInfo[playerID].ready"/>
       <PlayerListItem
         v-player-call-tooltip="playerID === caller"
         :player-id="playerID"
         :connection="playersInfo[playerID].connection"
-        :class='{
-          "active": playerID === currentPlayerTurn,
-          "border": playerID === winner || playerID === loser,
-          "border-5": playerID === winner || playerID === loser,
-          "border-success": playerID === winner,
-          "border-failure": playerID === loser
-        }'
       >
         <template #contextItem>
           <span v-if="thisPlayerId === playerID">
@@ -90,21 +95,22 @@ const {
       </PlayerListItem>
     </li>
   </ul>
-  <div v-if="lastHand && lastPlayerTurn">
+  <div v-if="lastHand && lastPlayerTurn" class="mt-3">
     <span><h2> {{ lastPlayerTurn }} proposed hand: </h2><CardsDisplay :cards='lastHand'/></span>
-    <h3 class='text-body-secondary fst-italic'>Note: Suits are random.</h3>
   </div>
-  <div v-if="currentPlayerTurn === thisPlayerId">
-    <button class="btn btn-primary" @click="showProposeHandModal = true">Create Proposed Hand</button>
-    <Teleport to='body'>
-      <ProposeHandModal v-if="showProposeHandModal"
-        :last-hand="lastHand ?? []"
-        @close="() => showProposeHandModal = false"
-        @proposed="(hand) => $emit('proposed', hand)"
-      />
-    </Teleport>
-  </div>
-  <div v-else-if="!gameHasEnded">
-    <button class="btn btn-danger" :disabled="!canCall" @click="() => $emit('called', currentPlayerTurn)">Call!</button>
+  <div class="d-inline-flex flex-row mt-3">
+    <div v-if="currentPlayerTurn === thisPlayerId">
+      <button class="btn btn-primary me-3" @click="showProposeHandModal = true">Create Proposed Hand</button>
+      <Teleport to='body'>
+        <ProposeHandModal v-if="showProposeHandModal"
+          :last-hand="lastHand ?? []"
+          @close="() => showProposeHandModal = false"
+          @proposed="(hand) => $emit('proposed', hand)"
+        />
+      </Teleport>
+    </div>
+    <div v-if="!gameHasEnded">
+      <button class="btn btn-danger" :disabled="!canCall" @click="() => $emit('called', lastPlayerTurn)">Call!</button>
+    </div>
   </div>
 </template>
