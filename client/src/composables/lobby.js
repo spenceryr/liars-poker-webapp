@@ -4,10 +4,8 @@ import { checkType, checkTypes } from "/@/utilities/checkType";
 export function useLobby(lobbyEvent) {
   /** @type {import("vue").Ref<Object<string, {connection: String, ready: boolean }>>} */
   const playersInfo = ref({});
-  /** @type {import("vue").Ref<string>} */
-  const lastWinner = shallowRef(null);
-  /** @type {import("vue").Ref<string>} */
-  const lobbyScreen = shallowRef(null);
+  /** @type {import("vue").Ref<Boolean>} */
+  const inGame = shallowRef(false);
 
   function setPlayer(playerID, connection, ready) {
     const playerInfo = { connection: connection, ready: ready };
@@ -23,14 +21,12 @@ export function useLobby(lobbyEvent) {
         const snapshot = lobbyEvent.snapshot;
         if (!checkType(snapshot, 'object')) return;
         const snapPlayers = snapshot.playerSnapshots;
-        const snapLastWinner = snapshot.lastWinner;
         const snapLobbyState = snapshot.lobbyState;
-        if (!checkTypes([snapPlayers, snapLastWinner, snapLobbyState], ['object', ['string', 'null'], 'string'])) return;
+        if (!checkTypes([snapPlayers, snapLobbyState], ['object', 'string'])) return;
         console.debug(`Lobby processing INITIALIZE`);
         // TODO: (spencer) Maybe validate the object more.
         playersInfo.value = snapPlayers;
-        lastWinner.value = snapLastWinner;
-        lobbyScreen.value = snapLobbyState;
+        inGame.value = snapLobbyState === 'IN_GAME' || snapLobbyState === 'POST_GAME';
         break;
       }
       case 'PLAYER_CONNECT': {
@@ -63,8 +59,7 @@ export function useLobby(lobbyEvent) {
       }
       case 'ENTER_PRE_GAME_LOBBY': {
         console.debug(`Lobby processing ENTER_PRE_GAME_LOBBY`);
-        lastWinner.value = null;
-        lobbyScreen.value = 'PRE_GAME';
+        inGame.value = false;
         break;
       }
       case 'PLAYER_READY': {
@@ -83,20 +78,12 @@ export function useLobby(lobbyEvent) {
       }
       case 'GAME_START': {
         console.debug(`Lobby processing GAME_START`);
-        for (const playerID in playersInfo.value) playersInfo.value[playerID].ready = false;
-        lobbyScreen.value = 'IN_GAME';
-        break;
-      }
-      case 'GAME_OVER': {
-        const winner = lobbyEvent.winner;
-        if (checkType(winner, 'string')) lastWinner.value = winner;
-        else if (checkType(winner, 'null')) lastWinner.value = null;
-        console.debug(`Lobby processing GAME_OVER ${winner}`);
-        lobbyScreen.value = 'POST_GAME';
+        for (const playerID in playersInfo.value) setPlayer(playerID, playersInfo.value[playerID].connection, false);
+        inGame.value = true;
         break;
       }
     }
   }, { immediate: true });
 
-  return { playersInfo, lastWinner, lobbyScreen };
+  return { playersInfo, inGame };
 }

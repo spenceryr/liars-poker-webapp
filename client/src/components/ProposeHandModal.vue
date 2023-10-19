@@ -5,7 +5,7 @@ import { Modal } from 'bootstrap';
 import PlayingCardIcon from './PlayingCardIcon.vue';
 
 /**
- * @typedef {{value: number, suit: undefined, id: number}} UniqueCard
+ * @typedef {{value: number, suit: undefined, id: string}} UniqueCard
  */
 /**
  * @typedef {{value: number, suit: undefined}} Card
@@ -45,12 +45,15 @@ let cardIDCounter = 0;
 /**
  *
  * @param {number} value
+ * @param {Object<string, number>} valueToCountMap
  * @returns {UniqueCard}
  */
-function createUniqueCard(value) {
+function createUniqueCard(value, valueToCountMap) {
+  let count = valueToCountMap[value]++ ?? 0;
+  valueToCountMap[value] = count;
   return {
     value: value,
-    id: cardIDCounter++,
+    id: value.toString() + count.toString(),
     suit: undefined
   };
 }
@@ -62,8 +65,11 @@ function createUniqueCard(value) {
 function addCardToProposedHand(ev, card) {
   // TODO: (spencer) Maybe add shake animation if false.
   console.debug(`Maybe adding card ${card} to ${JSON.stringify(proposedCustomHand)}`);
+  /** @type {Object<string, number>} */
+  let valueToCountMap = {};
   if (proposedCustomHand.addCard(card)) {
-    proposedHandUniqueCards.value = proposedCustomHand.cards.map((c) => createUniqueCard(c)).sort((c1, c2) => c1.value - c2.value);
+    let valueToCountMap = {};
+    proposedHandUniqueCards.value = proposedCustomHand.cards.map((c) => createUniqueCard(c, valueToCountMap)).sort((c1, c2) => c1.value - c2.value);
     isLargerThanLastHand.value = proposedCustomHand.compare(customLastHand) > 0;
   }
 }
@@ -75,7 +81,8 @@ function addCardToProposedHand(ev, card) {
 function removeCardFromProposedHand(ev, card) {
   console.debug(`Maybe removing card ${card} from ${JSON.stringify(proposedCustomHand)}`);
   if (proposedCustomHand.removeCard(card)) {
-    proposedHandUniqueCards.value = proposedCustomHand.cards.map((c) => createUniqueCard(c)).sort((c1, c2) => c1.value - c2.value);
+    let valueToCountMap = {};
+    proposedHandUniqueCards.value = proposedCustomHand.cards.map((c) => createUniqueCard(c, valueToCountMap)).sort((c1, c2) => c1.value - c2.value);
     isLargerThanLastHand.value = proposedCustomHand.compare(customLastHand) > 0;
   }
 }
@@ -104,6 +111,7 @@ function propose() {
                   </button>
                 </div>
               </template>
+              <PlayingCardIcon :class="proposedHandUniqueCards.length > 0 ? 'd-none' : 'invisible'" width="46" height="64" :card="null" />
             </div>
             <hr/>
             <div class="row row-cols-auto row-cols-md-5 gy-5 gy-md-4 justify-content-center">

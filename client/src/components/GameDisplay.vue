@@ -1,5 +1,5 @@
 <script setup>
-import { defineProps, computed } from 'vue';
+import { defineProps, computed, shallowRef, watch } from 'vue';
 import { GameEvent } from '/@/composables/game-event-queue.js';
 import PlayerListItem from '/@/components/PlayerListItem.vue';
 import CardsDisplay from '/@/components/CardsDisplay.vue';
@@ -7,6 +7,7 @@ import { Tooltip } from 'bootstrap';
 import ProposeHandModal from '/@/components/ProposeHandModal.vue';
 import PlayerReadyDisplay from '/@/components/PlayerReadyDisplay.vue';
 import { useGameState } from '/@/composables/game-state.js';
+import ReadyButton from './ReadyButton.vue';
 
 const props = defineProps({
   currentGameEvent: {
@@ -20,14 +21,10 @@ const props = defineProps({
   thisPlayerId: {
     type: String,
     required: true
-  },
-  gameOver: {
-    type: Boolean,
-    required: true
   }
 });
 
-defineEmits(['proposed', 'called']);
+defineEmits(['proposed', 'called', 'returnLobby', 'set-ready']);
 
 /**
  *
@@ -41,11 +38,12 @@ const vPlayerCallTooltip = (el, binding) => {
       placement: 'right',
       title: 'Call!',
       trigger: 'manual',
-      template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner fs-3 text-danger"></div></div>'
+      customClass: 'fs-3 text-danger',
+      container: el
     }).show();
   } else {
     console.debug(`Removing tooltip!`);
-    Tooltip.getInstance(el)?.hide();
+    Tooltip.getInstance(el.querySelector('.player-display-name-text'))?.hide();
   }
 };
 
@@ -59,10 +57,15 @@ const {
   winner,
   loser,
   caller,
-  showProposeHandModal,
   canCall,
-  gameHasEnded
-} = useGameState(computed(() => props.thisPlayerId), computed(() => props.currentGameEvent), computed(() => props.gameOver));
+  gameHasEnded,
+  gameWinner
+} = useGameState(computed(() => props.thisPlayerId), computed(() => props.currentGameEvent));
+const showProposeHandModal = shallowRef(false);
+
+watch(currentPlayerTurn, () => {
+  showProposeHandModal.value = false;
+});
 
 </script>
 
@@ -74,20 +77,20 @@ const {
         "border": playerID === winner || playerID === loser,
         "border-5": playerID === winner || playerID === loser,
         "border-success": playerID === winner,
-        "border-failure": playerID === loser
+        "border-danger": playerID === loser
       }'
     >
-      <PlayerReadyDisplay v-if="gameHasEnded" :ready="playersInfo[playerID].ready"/>
-      <PlayerListItem
+      <PlayerReadyDisplay v-if="gameHasEnded && playersInfo[playerID]" :ready="playersInfo[playerID].ready"/>
+      <PlayerListItem v-if="playersInfo[playerID]"
         v-player-call-tooltip="playerID === caller"
         :player-id="playerID"
         :connection="playersInfo[playerID].connection"
       >
         <template #contextItem>
-          <span v-if="thisPlayerId === playerID">
+          <span class="flex-shrink-0" v-if="thisPlayerId === playerID">
             <CardsDisplay :cards='playerHand'/>
           </span>
-          <span v-else-if="playersToCardsMap && playersToCardsMap[playerID]">
+          <span class="flex-shrink-0" v-else-if="playersToCardsMap && playersToCardsMap[playerID]">
             <CardsDisplay v-if='typeof playersToCardsMap[playerID] === "number"' :num-cards='playersToCardsMap[playerID]'/>
             <CardsDisplay v-else-if='Array.isArray(playersToCardsMap[playerID])' :cards='playersToCardsMap[playerID]'/>
           </span>
@@ -98,19 +101,30 @@ const {
   <div v-if="lastHand && lastPlayerTurn" class="mt-3">
     <span><h2> {{ lastPlayerTurn }} proposed hand: </h2><CardsDisplay :cards='lastHand'/></span>
   </div>
-  <div class="d-inline-flex flex-row mt-3">
-    <div v-if="currentPlayerTurn === thisPlayerId">
-      <button class="btn btn-primary me-3" @click="showProposeHandModal = true">Create Proposed Hand</button>
-      <Teleport to='body'>
-        <ProposeHandModal v-if="showProposeHandModal"
-          :last-hand="lastHand ?? []"
-          @close="() => showProposeHandModal = false"
-          @proposed="(hand) => $emit('proposed', hand)"
-        />
-      </Teleport>
+  <div class="text-center container-fluid mt-3">
+    <div v-if="!gameHasEnded" class="row-cols">
+      <template v-if="currentPlayerTurn === thisPlayerId">
+        <button class="btn col btn-primary me-3" @click="showProposeHandModal = true">Create Proposed Hand</button>
+        <Teleport to='body'>
+          <ProposeHandModal v-if="showProposeHandModal"
+            :last-hand="lastHand ?? []"
+            @close="() => showProposeHandModal = false"
+            @proposed="(hand) => $emit('proposed', hand)"
+          />
+        </Teleport>
+      </template>
+      <button class="btn col btn-danger" :disabled="!canCall" @click="() => $emit('called', lastPlayerTurn)">Call!</button>
     </div>
-    <div v-if="!gameHasEnded">
-      <button class="btn btn-danger" :disabled="!canCall" @click="() => $emit('called', lastPlayerTurn)">Call!</button>
+    <div v-else class="text-center container-fluid mt-3">
+      <h2 class="row-cols">Game Over!</h2>
+      <h2 v-if="gameWinner" class="row-cols">
+        <span class="col fw-bold me-2">Winner 👑:</span>
+        <span class="col">{{ gameWinner }}!</span>
+      </h2>
+      <div class="row mt-3">
+        <button class="col ms-md-5 btn btn-secondary me-3" @click="() => $emit('returnLobby')">Return to Lobby</button>
+        <ReadyButton class="col me-md-5" :remote-ready="playersInfo[thisPlayerId].ready" @set-ready="(ready) => $emit('set-ready', ready)"/>
+      </div>
     </div>
   </div>
 </template>

@@ -1,7 +1,7 @@
 import { watch, toValue, shallowRef } from 'vue'
 import { GAME_EVENTS } from '/@/composables/game-event-queue.js';
 
-export function useGameState(thisPlayerID, currentEvent, gameOver) {
+export function useGameState(thisPlayerID, currentEvent) {
   const playersToCardsMap = shallowRef(null);
   const playerHand = shallowRef(null);
   const playersOrder = shallowRef(null);
@@ -11,10 +11,9 @@ export function useGameState(thisPlayerID, currentEvent, gameOver) {
   const winner = shallowRef(null);
   const loser = shallowRef(null);
   const caller = shallowRef(null);
-  // TODO: (spencer) Maybe rename this or move out of this file.
-  const showProposeHandModal = shallowRef(false);
   const canCall = shallowRef(false);
   const gameHasEnded = shallowRef(false);
+  const gameWinner = shallowRef(false);
 
   watch(currentEvent, async (newEvent) => {
     const event = toValue(newEvent);
@@ -31,6 +30,10 @@ export function useGameState(thisPlayerID, currentEvent, gameOver) {
         playersOrder.value = data.playersOrder;
         playersToCardsMap.value = data.playersNumCards;
         playerHand.value = data.playerHand;
+        gameWinner.value = data.gameWinner;
+        if (data.gameWinner) {
+          gameHasEnded.value = true;
+        }
         break;
       }
       case GAME_EVENTS.SETUP: {
@@ -46,14 +49,14 @@ export function useGameState(thisPlayerID, currentEvent, gameOver) {
         loser.value = null;
         caller.value = null;
         canCall.value = false;
-        await new Promise((resolve) => setTimeout(resolve, 1 * 1000));
+        gameWinner.value = null;
+        gameHasEnded.value = false;
         break;
       }
       case GAME_EVENTS.PLAYER_TURN: {
         console.debug(`Game processing PLAYER_TURN: ${JSON.stringify(event.data)}`);
         const data = event.data;
         currentPlayerTurn.value = data.player;
-        showProposeHandModal.value = data.player === toValue(thisPlayerID);
         canCall.value = lastPlayerTurn.value && lastPlayerTurn.value !== toValue(thisPlayerID);
         break;
       }
@@ -75,22 +78,23 @@ export function useGameState(thisPlayerID, currentEvent, gameOver) {
         caller.value = [data.winner, data.loser].filter((player) => lastPlayerTurn.value !== player)[0];
         console.debug(`Setting caller to ${caller.value}`);
         await new Promise((resolve) => setTimeout(resolve, 3 * 1000));
+        caller.value = null;
         winner.value = data.winner;
         loser.value = data.loser;
         await new Promise((resolve) => setTimeout(resolve, 5 * 1000));
         break;
       }
+      case GAME_EVENTS.GAME_OVER: {
+        console.debug(`Game processing GAME_OVER: ${JSON.stringify(event.data)}`);
+        const data = event.data;
+        gameHasEnded.value = true;
+        gameWinner.value = data.winner;
+        canCall.value = false;
+        currentPlayerTurn.value = null;
+        break;
+      }
     }
     event.consume();
-  }, { immediate: true });
-
-  watch(gameOver, (newGameOver) => {
-    const gameOver = toValue(newGameOver);
-    if (!gameOver) return;
-    gameHasEnded.value = true;
-    canCall.value = false;
-    currentPlayerTurn.value = null;
-    showProposeHandModal.value = false;
   }, { immediate: true });
 
   return {
@@ -103,8 +107,8 @@ export function useGameState(thisPlayerID, currentEvent, gameOver) {
     winner,
     loser,
     caller,
-    showProposeHandModal,
     canCall,
-    gameHasEnded
+    gameHasEnded,
+    gameWinner
   };
 }

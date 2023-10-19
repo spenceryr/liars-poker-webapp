@@ -22,7 +22,8 @@ export const GAME_EVENTS = {
   SETUP: 'SETUP',
   PLAYER_TURN: 'PLAYER_TURN',
   PLAYER_PROPOSE_HAND: 'PLAYER_PROPOSE_HAND',
-  REVEAL: 'REVEAL'
+  REVEAL: 'REVEAL',
+  GAME_OVER: 'GAME_OVER'
 }
 
 /**
@@ -102,6 +103,13 @@ export function useGameEventQueue(gameEvent) {
         console.debug(`GameQueue processing REVEAL`);
         const { event: _, ...data } = gameEvent;
         push(new GameEvent(GAME_EVENTS.REVEAL, data));
+        break;
+      }
+      case GAME_EVENTS.GAME_OVER: {
+        if (!checkTypes(gameEvent.winner, 'string')) return;
+        console.debug(`GameQueue processing GAME_OVER`);
+        const { event: _, ...data } = gameEvent;
+        push(new GameEvent(GAME_EVENTS.GAME_OVER, data));
         break;
       }
     }

@@ -43,7 +43,8 @@ export class Game {
     /** @type {Player?} */
     this.lastHandPlayer = null;
     /** @type {Player?} */
-    this.lastWinner = null;
+    this.lastRoundWinner = null;
+    this.gameWinner = null;
     this.stateMachine = new GameStateMachine();
     this.stateMachine.emitter.on("state_change", this.handleStateChange.bind(this));
     this.emitter = new EventEmitter();
@@ -55,6 +56,7 @@ export class Game {
     // TODO: (spencer) Create class.
     return {
       gameState: this.stateMachine.state,
+      gameWinner: this.gameWinner,
       currentPlayerTurn: this.players[this.currentPlayerTurnIndex].playerID,
       lastHand: this.lastHand?.cards.map((card) => card.toObj()),
       lastHandPlayer: this.lastHandPlayer?.playerID ?? null,
@@ -71,7 +73,7 @@ export class Game {
       }
       case GAME_STATES.SETUP: {
         console.debug(`Game ${this.gameID} transition to setup`);
-        this.currentPlayerTurnIndex = this.getPlayerIndex(this.lastWinner ?? 0) ?? 0;
+        this.currentPlayerTurnIndex = this.getPlayerIndex(this.lastRoundWinner ?? 0) ?? 0;
         this.playingCards = new PlayingCards(this.numCardsInPlay);
         this.lastHand = null;
         this.lastHandPlayer = null;
@@ -108,7 +110,7 @@ export class Game {
         let [winner, loser] = isItThere ? [this.calledPlayer, this.callingPlayer] : [this.callingPlayer, this.calledPlayer];
         loser.numCards -= 1;
         this.numCardsInPlay -= 1;
-        this.lastWinner = winner;
+        this.lastRoundWinner = winner;
         this.emitter.emit(GAME_EVENT.REVEAL, { "loser": loser, "winner": winner });
         break;
       }
@@ -123,6 +125,7 @@ export class Game {
             break;
           }
         }
+        this.gameWinner = winner;
         console.debug(`Game ${this.gameID} game over, winner: ${winner}`);
         this.emitter.emit(GAME_EVENT.GAME_OVER, winner)
         break;

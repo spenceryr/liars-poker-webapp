@@ -42,11 +42,11 @@ export class PlayingCards {
    */
   isItThere(cards) {
     let cardsCopy = [...cards];
-    this.cardsInPlay.forEach((card) => {
-      if (cardsCopy.length === 0) return;
-      let index = cards.findIndex((card2) => card.value === card2.value)
+    for (const card of this.cardsInPlay) {
+      if (cardsCopy.length === 0) return true;
+      let index = cardsCopy.findIndex((card2) => card.value === card2.value)
       if (index !== -1) cardsCopy.splice(index, 1);
-    });
+    }
     return cardsCopy.length === 0;
   }
 

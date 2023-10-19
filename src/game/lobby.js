@@ -33,6 +33,10 @@ export class Lobby {
     this.stateMachine = new LobbyStateMachine();
     this.stateMachine.emitter.on("state_change", (function onStateChange(state) {
       if (state !== LobbyStateMachine.LOBBY_STATES.PRE_GAME) return;
+      if (this.game) {
+        this.stopListenForGameEvents();
+        this.game = null;
+      }
       // Remove disconnected clients.
       this.clients
         .filter((client) => client.isDisconnected)
@@ -212,6 +216,7 @@ export class Lobby {
    * @returns
    */
   clientReady(client) {
+    if (this.inGame) return;
     if (!this.clientIDs.has(client.clientID)) return;
     if (client.player.ready) return;
     client.player.ready = true;
@@ -282,14 +287,15 @@ export class Lobby {
     }
     /** @type {Player} */
     let startingPlayer = null;
-    if (this.lastWinner) startingPlayer = ClientDataStore.get(this.lastWinner);
+    if (this.lastWinner) startingPlayer = ClientDataStore.get(this.lastWinner).player;
     let players = this.clients.map((client) => client.player);
     shuffleArray(players);
-    if (!startingPlayer) startingPlayer = players[Math.floor(Math.random() * players.length)];
+    if (!startingPlayer || !players.includes(startingPlayer)) startingPlayer = players[Math.floor(Math.random() * players.length)];
     // Makes sure player order starts with starting player
     while (players[0] !== startingPlayer) {
       players.push(players.shift());
     }
+    if (this.game) this.stopListenForGameEvents();
     this.game = new Game(players);
     this.listenForGameEvents();
     if (!this.game.start()) {
@@ -321,11 +327,11 @@ export class Lobby {
   gameEventHandlers = {
     [GAME_EVENT.GAME_START]: (function onGameStart() {
       console.debug(`Lobby ${this.lobbyID} received game start event`);
-      this.clients.forEach((client) => client.ready = false);
+      this.clients.forEach((client) => client.player.ready = false);
       this.sendToAllClients(JSON.stringify({
         type: "LOBBY_EVENT",
         event: "GAME_START"
-      }))
+      }));
     }).bind(this),
     /**
      *
@@ -400,14 +406,10 @@ export class Lobby {
      */
     [GAME_EVENT.GAME_OVER]: (function onGameGameOver(winner) {
       console.debug(`Lobby ${this.lobbyID} received game over game event`);
-      if (this.game) {
-        this.stopListenForGameEvents();
-        this.game = null;
-      }
       this.lastWinner = winner?.clientID ?? null;
       this.sendToAllClients(JSON.stringify({
         // TODO: (spencer) Maybe include reason why game ended?
-        type: "LOBBY_EVENT",
+        type: "GAME_EVENT",
         event: "GAME_OVER",
         winner: winner?.playerID ?? null,
       }));
