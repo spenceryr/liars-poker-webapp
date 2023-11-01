@@ -12,6 +12,21 @@ if [ $(id -u) -eq 0 ]; then
   exit 1
 fi
 
+if [ -z "${EXT_CLOUDFLARE_API_TOKEN}" ]; then
+  echo "ERROR: EXT_CLOUDFLARE_API_TOKEN REQUIRED"
+  exit 1
+fi
+
+if [ -z "${EXT_DOTENV_KEY}" ]; then
+  echo "ERROR: EXT_DOTENV_KEY REQUIRED"
+  exit 1
+fi
+
+if [ -z "${EXT_CERTBOT_EMAIL}" ]; then
+  echo "ERROR: EXT_CERTBOT_EMAIL REQUIRED"
+  exit 1
+fi
+
 # Create this directory structure:
 # $HOME/
 # └── liars/
