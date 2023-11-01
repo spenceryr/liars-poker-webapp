@@ -91,7 +91,7 @@ podman create \
   --env 'LIARS_PORT' \
   --secret 'DOTENV_KEY_SECRET,type=env,target=DOTENV_KEY'
   --expose "${LIARS_PORT}" \
-  "docker.io/spenzor/liars-ws"
+  "docker.io/spenzor/liars-ws:latest"
 
 NGINX_SSL_LOCATION="$HOME/liars/nginx/ssl/"
 openssl req -x509 \
