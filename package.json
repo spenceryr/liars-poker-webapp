@@ -4,7 +4,8 @@
   "description": "Server component for liar's poker game.",
   "main": "main.js",
   "scripts": {
-    "start": "NODE_ENV=production node main.js",
+    "start": "npm run build-client && npm run get-client && node main.js",
+    "build-client": "cd client && npm run build",
     "get-client": "rm -rf public/dist && cp -rf client/dist public",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --ignore-path .gitignore",

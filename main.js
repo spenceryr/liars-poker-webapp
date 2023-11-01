@@ -32,25 +32,26 @@ const manifest = (() => {
 })();
 
 /** @type {string} */
-var SERVER_KEY_PATH = process.env.SERVER_KEY_PATH;
+const SERVER_KEY_PATH = process.env.SERVER_KEY_PATH;
 assert(SERVER_KEY_PATH);
 /** @type {string} */
-var SERVER_CERT_PATH = process.env.SERVER_CERT_PATH;
+const SERVER_CERT_PATH = process.env.SERVER_CERT_PATH;
 assert(SERVER_CERT_PATH);
 /** @type {string} */
-var SITE_PASSWORD = process.env.SITE_PASSWORD;
+const SITE_PASSWORD = process.env.SITE_PASSWORD;
 assert(SITE_PASSWORD);
 /** @type {string} */
-var SESSION_COOKIE_SECRET = process.env.SESSION_COOKIE_SECRET;
+const SESSION_COOKIE_SECRET = process.env.SESSION_COOKIE_SECRET;
 assert(SESSION_COOKIE_SECRET);
 /** @type {string} */
-var SESSION_STORE_PATH = process.env.SESSION_STORE_PATH;
-assert(SESSION_STORE_PATH);
-/** @type {string} */
-var SESSION_STORE_SECRET = process.env.SESSION_STORE_SECRET;
+const SESSION_STORE_SECRET = process.env.SESSION_STORE_SECRET;
 assert(SESSION_STORE_SECRET);
-var ENVIRONMENT = process.env.NODE_ENV;
+/** @type {string} */
+const ENVIRONMENT = process.env.NODE_ENV;
 assert(ENVIRONMENT);
+/** @type {string} */
+const LIARS_PORT = process.env.LIARS_PORT;
+assert(LIARS_PORT);
 
 /**
  * @param {Express} app
@@ -114,6 +115,10 @@ function createWSServer(httpsServer, sessionRouter) {
  */
 function expressSetup(sessionRouter) {
   const app = express();
+  if (NODE_ENV === 'production') {
+    // TODO: (spencer) Is this the best way to do this?
+    app.set('trust proxy', 'uniquelocal');
+  }
   nunjucks.configure(path.join(__dirname, "views"), { autoescape: true, express: app });
   app.disable("x-powered-by");
   app.use(rateLimit({
@@ -279,7 +284,6 @@ function main() {
     cookie: { path: '/', httpOnly: true, secure: true, sameSite: true, maxAge: 24 * 60 * 60 },
     saveUninitialized: false,
     store: new FileStore({
-      path: SESSION_STORE_PATH,
       ttl: 24 * 60 * 60,
       reapAsync: true,
       reapSyncFallback: true,
@@ -294,7 +298,7 @@ function main() {
   const wss = createWSServer(httpsServer, sessionRouter);
   // TODO: (spencer) Currently just have a single lobby. Increase to multi-lobby support later.
 
-  httpsServer.listen(8080);
+  httpsServer.listen(Number(LIARS_PORT));
 }
 
 main();
