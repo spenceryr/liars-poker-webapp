@@ -40,19 +40,26 @@ fi
 #     └── webserver/
 #         └── conf/
 
+echo "Setting up Home Directory..."
 mkdir -p "$HOME/liars/certbot/conf"
 mkdir -p "$HOME/liars/certbot/logs"
 mkdir -p "$HOME/liars/nginx/conf"
 mkdir -p "$HOME/liars/webserver/conf"
+echo "Done!"
 
+echo "Collecting files from GitHub..."
 # With more complex deployment, probably want to pass this in.
 LIARS_BRANCH="main"
 curl -o "$HOME/liars/certbot/renew-certs.sh" "https://raw.githubusercontent.com/spenceryr/liars-poker-webapp/${LIARS_BRANCH}/deploy/renew-certs.sh"
 curl -o "$HOME/liars/nginx/conf/default.conf" "https://raw.githubusercontent.com/spenceryr/liars-poker-webapp/${LIARS_BRANCH}/deploy/nginx/default.conf"
+echo "Done!"
 
+echo "Setting up cloudflare secret in podman..."
 CLOUDFLARE_TOKEN_SECRET="cloudflare-credentials"
 echo "dns_cloudflare_api_token = ${EXT_CLOUDFLARE_API_TOKEN}" | podman secret create "${CLOUDFLARE_TOKEN_SECRET}" -
+echo "Done!"
 
+echo "Creating and starting liars-certbot container..."
 podman create \
   --name "liars-certbot" \
   --replace \
@@ -70,22 +77,30 @@ podman create \
     -n \
     --email "${EXT_CERTBOT_EMAIL}"
 
+podman start "liars-certbot"
+
 CERTBOT_SUCCESS="$(podman wait --condition "exited" "liars-certbot")"
 if [ "${CERTBOT_SUCCESS}" -ne 0 ]; then
   echo "Error: Certbot failed!"
   exit 1
 fi
+echo "Done!"
 
+echo "Creating liars pod..."
 POD_NAME="liars-pod"
 podman pod create \
   --name "${POD_NAME}" \
   --replace \
   --network slirp4netns:port_handler=slirp4netns \
   --userns "keep-id"
+echo "Done!"
 
+echo "Setting up DotEnv podman secret..."
 podman secret create --env true DOTENV_KEY_SECRET EXT_DOTENV_KEY
 LIARS_PORT=3333
+echo "Done!"
 
+echo "Creating internal ssl cert for webserver..."
 WEBSERVER_SSL_LOCATION="$HOME/liars/webserver/conf/"
 openssl req -x509 \
   -newkey rsa:4096 \
@@ -95,7 +110,9 @@ openssl req -x509 \
   -days 365 \
   -nodes \
   -subj '/CN=localhost'
+echo "Done!"
 
+echo "Creating container for webserver..."
 podman create \
   --name "liars-webserver" \
   --replace \
@@ -107,7 +124,9 @@ podman create \
   --secret 'DOTENV_KEY_SECRET,type=env,target=DOTENV_KEY'
   --expose "${LIARS_PORT}" \
   "docker.io/spenzor/liars-ws:latest"
+echo "Done!"
 
+echo "Creating internal ssl cert for nginx..."
 NGINX_SSL_LOCATION="$HOME/liars/nginx/ssl/"
 openssl req -x509 \
   -newkey rsa:4096 \
@@ -117,7 +136,9 @@ openssl req -x509 \
   -days 365 \
   -nodes \
   -subj '/CN=localhost'
+echo "Done!"
 
+echo "Creating container for nginx..."
 podman create \
   --name "liars-nginx" \
   --replace \
@@ -130,11 +151,16 @@ podman create \
   -v "$NGINX_SSL_LOCATION:/etc/nginx/ssl/upstream/:U,ro"
   -v "$HOME/liars/certbot/conf/:/etc/letsencrypt/:U,ro" \
   docker.io/library/nginx:stable-alpine3.17
+echo "Done!"
 
+echo "Starting pod..."
 podman pod start "${POD_NAME}"
+echo "Done!"
 
+echo "Creating cron job..."
 # Create cron job to renew certs
 CRON_CMD="$HOME/liars/certbot/renew-certs.sh"
 CRON_JOB="0 12 * * * ${CRON_CMD}"
 # https://stackoverflow.com/a/17975418
 ( crontab -l | grep -v -F "${CRON_CMD}" || : ; echo "${CRON_JOB}" ) | crontab -
+echo "Done!"
