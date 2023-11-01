@@ -56,6 +56,9 @@ echo "Done!"
 
 echo "Setting up cloudflare secret in podman..."
 CLOUDFLARE_TOKEN_SECRET="cloudflare-credentials"
+if podman secret exists "${CLOUDFLARE_TOKEN_SECRET}"; then
+  podman secret rm "${CLOUDFLARE_TOKEN_SECRET}"
+fi
 echo "dns_cloudflare_api_token = ${EXT_CLOUDFLARE_API_TOKEN}" | podman secret create "${CLOUDFLARE_TOKEN_SECRET}" -
 echo "Done!"
 
@@ -65,7 +68,7 @@ podman create \
   --replace \
   -v "$HOME/liars/certbot/conf/:/etc/letsencrypt/:U,rw" \
   -v "$HOME/liars/certbot/logs/:/var/log/letsencrypt/:U,rw" \
-  -u "$UID"
+  -u "$UID" \
   --secret "${CLOUDFLARE_TOKEN_SECRET},type=mount,mode=0400,uid=${UID}" \
   docker.io/certbot/dns-cloudflare:latest \
   certonly \
@@ -96,7 +99,11 @@ podman pod create \
 echo "Done!"
 
 echo "Setting up DotEnv podman secret..."
-podman secret create --env true DOTENV_KEY_SECRET EXT_DOTENV_KEY
+DOTENV_KEY_SECRET="webserver-dotenv-key"
+if podman secret exists "${DOTENV_KEY_SECRET}"; then
+  podman secret rm "${DOTENV_KEY_SECRET}"
+fi
+podman secret create --env "${DOTENV_KEY_SECRET}" EXT_DOTENV_KEY
 LIARS_PORT=3333
 echo "Done!"
 
@@ -121,7 +128,7 @@ podman create \
   -v "$WEBSERVER_SSL_LOCATION:/etc/liars-webserver/:U,rw" \
   --env 'NODE_ENV=production' \
   --env 'LIARS_PORT' \
-  --secret 'DOTENV_KEY_SECRET,type=env,target=DOTENV_KEY'
+  --secret "${DOTENV_KEY_SECRET},type=env,target=DOTENV_KEY" \
   --expose "${LIARS_PORT}" \
   "docker.io/spenzor/liars-ws:latest"
 echo "Done!"
