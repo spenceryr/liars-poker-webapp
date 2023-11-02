@@ -284,6 +284,7 @@ function main() {
     cookie: { path: '/', httpOnly: true, secure: true, sameSite: true, maxAge: 24 * 60 * 60 },
     saveUninitialized: false,
     store: new FileStore({
+      path: NODE_ENV === 'production' ? '/var/liars-webserver/sessions' : './sessions',
       ttl: 24 * 60 * 60,
       reapAsync: true,
       reapSyncFallback: true,
