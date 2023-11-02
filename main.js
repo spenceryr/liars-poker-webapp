@@ -47,8 +47,8 @@ assert(SESSION_COOKIE_SECRET);
 const SESSION_STORE_SECRET = process.env.SESSION_STORE_SECRET;
 assert(SESSION_STORE_SECRET);
 /** @type {string} */
-const ENVIRONMENT = process.env.NODE_ENV;
-assert(ENVIRONMENT);
+const NODE_ENV = process.env.NODE_ENV;
+assert(NODE_ENV);
 /** @type {string} */
 const LIARS_PORT = process.env.LIARS_PORT;
 assert(LIARS_PORT);
@@ -201,7 +201,7 @@ function expressSetup(sessionRouter) {
   app.get("/",
     isAuthenticated(restoreClientSession()),
     (req, res) => {
-      res.render("index.njk", { environment: ENVIRONMENT, manifest });
+      res.render("index.njk", { environment: NODE_ENV, manifest });
     },
     handleRenderError()
   );
@@ -260,7 +260,7 @@ function expressSetup(sessionRouter) {
     function goToLobby(req, res) {
       let lobbyID = req.params.lobbyID;
       if (!req.liarsClient.joinLobby(lobbyID)) return res.redirect("/lobby-list");
-      res.render("lobby.njk", { lobby: LobbyStore.get(lobbyID), environment: ENVIRONMENT, manifest });
+      res.render("lobby.njk", { lobby: LobbyStore.get(lobbyID), environment: NODE_ENV, manifest });
     },
     handleRenderError()
   );

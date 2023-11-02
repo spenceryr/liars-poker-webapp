@@ -99,8 +99,8 @@ podman pod create \
   --name "${POD_NAME}" \
   --replace \
   --network slirp4netns:port_handler=slirp4netns \
-  -p 80:80 \
-  -p 443:443 \
+  -p 80:8080 \
+  -p 443:4343 \
   --userns "keep-id"
 echo "Done!"
 
@@ -161,6 +161,7 @@ podman create \
   -u "$UID" \
   -v "$HOME/liars/nginx/conf/:/etc/nginx/conf.d/:U,rw" \
   -v "$NGINX_SSL_LOCATION:/etc/nginx/ssl/upstream/:U,ro" \
+  -v "$WEBSERVER_SSL_LOCATION/cert.pem:/etc/nginx/trusted_ca_cert.crt:U,ro" \
   -v "$HOME/liars/certbot/conf/:/etc/letsencrypt/:U,ro" \
   docker.io/nginxinc/nginx-unprivileged:stable-alpine3.17
 echo "Done!"
