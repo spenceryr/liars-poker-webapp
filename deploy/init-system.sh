@@ -30,22 +30,26 @@ echo "${NEW_USER_NAME}:${EXT_SERVER_USER_PASSWORD}" | chpasswd
 # Prevent processes for user from ending when session ends
 loginctl enable-linger "${NEW_USER_NAME}"
 
-# Set up iptables
+# Set up ipv4 iptables
+/usr/sbin/iptables -F
+/usr/sbin/iptables -P OUTPUT ACCEPT
+/usr/sbin/iptables -P INPUT DROP
+/usr/sbin/iptables -P FORWARD DROP
 /usr/sbin/iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-/usr/sbin/iptables -A FORWARD -j DROP
 /usr/sbin/iptables -A INPUT -i lo -j ACCEPT
 /usr/sbin/iptables -A OUTPUT -o lo -j ACCEPT
-/usr/sbin/iptables -A INPUT -p tcp -m multiport --dports 80,443,22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-# /usr/sbin/iptables -A OUTPUT -p tcp -m multiport --dports 80,443,22 -m conntrack --ctstate ESTABLISHED -j ACCEPT
+/usr/sbin/iptables -A INPUT -p tcp -m multiport --dports 80,443,22 -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
+# Set up ipv6 iptables
+/usr/sbin/ip6tables -F
+/usr/sbin/ip6tables -P OUTPUT ACCEPT
+/usr/sbin/ip6tables -P INPUT DROP
+/usr/sbin/ip6tables -P FORWARD DROP
+/usr/sbin/ip6tables -A INPUT -i lo -j ACCEPT
+/usr/sbin/ip6tables -A OUTPUT -o lo -j ACCEPT
 /usr/sbin/ip6tables -A INPUT -p tcp -m multiport --dports 80,443 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
-# /usr/sbin/ip6tables -A OUTPUT -p tcp -m multiport --dports 80,443 -m conntrack --ctstate ESTABLISHED -j ACCEPT
-# iptables -A INPUT -m conntrack -j ACCEPT --ctstate RELATED,ESTABLISHED
-/usr/sbin/iptables -F
-/usr/sbin/iptables -A INPUT -j DROP
-/usr/sbin/iptables -P OUTPUT ACCEPT
 # Allow rootless users to send "pings"
 # https://www.redhat.com/sysadmin/container-networking-podman
-sysctl -w "net.ipv4.ping_group_range=0 2000000"
+# sysctl -w "net.ipv4.ping_group_range=0 2000000"
 
 # Lower priviledged port start to allow rootless nginx container to listen on 80
 sysctl net.ipv4.ip_unprivileged_port_start=80
