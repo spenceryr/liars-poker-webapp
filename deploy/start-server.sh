@@ -35,8 +35,9 @@ fi
 #     │   ├── logs/
 #     │   └── renew-certs.sh
 #     ├── nginx/
-#     │   └── conf/
-#             └── default.conf
+#     │   ├── conf/
+#     │       └── default.conf
+#     │   └── ssl/
 #     └── webserver/
 #         └── conf/
 
@@ -44,6 +45,7 @@ echo "Setting up Home Directory..."
 mkdir -p "$HOME/liars/certbot/conf"
 mkdir -p "$HOME/liars/certbot/logs"
 mkdir -p "$HOME/liars/nginx/conf"
+mkdir -p "$HOME/liars/nginx/ssl"
 mkdir -p "$HOME/liars/webserver/conf"
 echo "Done!"
 
@@ -56,7 +58,7 @@ echo "Done!"
 
 echo "Setting up cloudflare secret in podman..."
 CLOUDFLARE_TOKEN_SECRET="cloudflare-credentials"
-if podman secret exists "${CLOUDFLARE_TOKEN_SECRET}"; then
+if podman secret inspect "${CLOUDFLARE_TOKEN_SECRET}" &> /dev/null; then
   podman secret rm "${CLOUDFLARE_TOKEN_SECRET}"
 fi
 echo "dns_cloudflare_api_token = ${EXT_CLOUDFLARE_API_TOKEN}" | podman secret create "${CLOUDFLARE_TOKEN_SECRET}" -
@@ -95,12 +97,14 @@ podman pod create \
   --name "${POD_NAME}" \
   --replace \
   --network slirp4netns:port_handler=slirp4netns \
+  -p 80:80 \
+  -p 443:443 \
   --userns "keep-id"
 echo "Done!"
 
 echo "Setting up DotEnv podman secret..."
 DOTENV_KEY_SECRET="webserver-dotenv-key"
-if podman secret exists "${DOTENV_KEY_SECRET}"; then
+if podman secret inspect "${DOTENV_KEY_SECRET}" &> /dev/null; then
   podman secret rm "${DOTENV_KEY_SECRET}"
 fi
 podman secret create --env "${DOTENV_KEY_SECRET}" EXT_DOTENV_KEY
@@ -108,7 +112,7 @@ LIARS_PORT=3333
 echo "Done!"
 
 echo "Creating internal ssl cert for webserver..."
-WEBSERVER_SSL_LOCATION="$HOME/liars/webserver/conf/"
+WEBSERVER_SSL_LOCATION="$HOME/liars/webserver/conf"
 openssl req -x509 \
   -newkey rsa:4096 \
   -keyout "$WEBSERVER_SSL_LOCATION/key.pem" \
@@ -116,7 +120,7 @@ openssl req -x509 \
   -sha256 \
   -days 365 \
   -nodes \
-  -subj '/CN=localhost'
+  -subj '/CN=localhost' > /dev/null
 echo "Done!"
 
 echo "Creating container for webserver..."
@@ -134,7 +138,7 @@ podman create \
 echo "Done!"
 
 echo "Creating internal ssl cert for nginx..."
-NGINX_SSL_LOCATION="$HOME/liars/nginx/ssl/"
+NGINX_SSL_LOCATION="$HOME/liars/nginx/ssl"
 openssl req -x509 \
   -newkey rsa:4096 \
   -keyout "$NGINX_SSL_LOCATION/key.pem" \
@@ -142,7 +146,7 @@ openssl req -x509 \
   -sha256 \
   -days 365 \
   -nodes \
-  -subj '/CN=localhost'
+  -subj '/CN=localhost' > /dev/null
 echo "Done!"
 
 echo "Creating container for nginx..."
@@ -152,10 +156,8 @@ podman create \
   --pod "${POD_NAME}" \
   --requires "liars-webserver" \
   -u "$UID" \
-  -p 80:80 \
-  -p 443:443 \
   -v "$HOME/liars/nginx/conf/:/etc/nginx/conf.d/:U,ro" \
-  -v "$NGINX_SSL_LOCATION:/etc/nginx/ssl/upstream/:U,ro"
+  -v "$NGINX_SSL_LOCATION:/etc/nginx/ssl/upstream/:U,ro" \
   -v "$HOME/liars/certbot/conf/:/etc/letsencrypt/:U,ro" \
   docker.io/library/nginx:stable-alpine3.17
 echo "Done!"
