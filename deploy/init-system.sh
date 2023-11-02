@@ -23,7 +23,7 @@ sysctl -p /etc/sysctl.d/userns.conf
 NEW_USER_NAME=server
 useradd -c "Server User" -m "${NEW_USER_NAME}"
 if [ -z ${EXT_SERVER_USER_PASSWORD} ]; then
-  read -p "Enter password for ${NEW_USER_NAME} user: " EXT_SERVER_USER_PASSWORD
+  read -s -p "Enter password for ${NEW_USER_NAME} user: " EXT_SERVER_USER_PASSWORD
 fi
 echo "${NEW_USER_NAME}:${EXT_SERVER_USER_PASSWORD}" | chpasswd
 
