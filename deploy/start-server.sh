@@ -40,8 +40,7 @@ fi
 #     │   └── ssl/
 #     └── webserver/
 #         ├── conf/
-#         └── src/
-#             └── app/
+#         └── var/
 
 echo "Setting up Home Directory..."
 mkdir -p "$HOME/liars/certbot/conf"
@@ -49,7 +48,7 @@ mkdir -p "$HOME/liars/certbot/logs"
 mkdir -p "$HOME/liars/nginx/conf"
 mkdir -p "$HOME/liars/nginx/ssl"
 mkdir -p "$HOME/liars/webserver/conf"
-mkdir -p "$HOME/liars/webserver/src/app"
+mkdir -p "$HOME/liars/webserver/var"
 echo "Done!"
 
 echo "Collecting files from GitHub..."
@@ -133,7 +132,7 @@ podman create \
   --pod "${POD_NAME}" \
   -u "$UID" \
   -v "$WEBSERVER_SSL_LOCATION:/etc/liars-webserver/:U,rw" \
-  -v "$HOME/liars/webserver/src/app:/src/app/:U,rw" \
+  -v "$HOME/liars/webserver/var/:/var/liars-webserver/:U,rw" \
   --env 'NODE_ENV=production' \
   --env 'LIARS_PORT' \
   --secret "${DOTENV_KEY_SECRET},type=env,target=DOTENV_KEY" \
