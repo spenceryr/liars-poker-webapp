@@ -39,7 +39,9 @@ fi
 #     │       └── default.conf
 #     │   └── ssl/
 #     └── webserver/
-#         └── conf/
+#         ├── conf/
+#         └── src/
+#             └── app/
 
 echo "Setting up Home Directory..."
 mkdir -p "$HOME/liars/certbot/conf"
@@ -47,6 +49,7 @@ mkdir -p "$HOME/liars/certbot/logs"
 mkdir -p "$HOME/liars/nginx/conf"
 mkdir -p "$HOME/liars/nginx/ssl"
 mkdir -p "$HOME/liars/webserver/conf"
+mkdir -p "$HOME/liars/webserver/src/app"
 echo "Done!"
 
 echo "Collecting files from GitHub..."
@@ -108,7 +111,6 @@ if podman secret inspect "${DOTENV_KEY_SECRET}" &> /dev/null; then
   podman secret rm "${DOTENV_KEY_SECRET}"
 fi
 podman secret create --env "${DOTENV_KEY_SECRET}" EXT_DOTENV_KEY
-LIARS_PORT=3333
 echo "Done!"
 
 echo "Creating internal ssl cert for webserver..."
@@ -124,12 +126,14 @@ openssl req -x509 \
 echo "Done!"
 
 echo "Creating container for webserver..."
+LIARS_PORT=3333 \
 podman create \
   --name "liars-webserver" \
   --replace \
   --pod "${POD_NAME}" \
   -u "$UID" \
   -v "$WEBSERVER_SSL_LOCATION:/etc/liars-webserver/:U,rw" \
+  -v "$HOME/liars/webserver/src/app:/src/app/:U,rw" \
   --env 'NODE_ENV=production' \
   --env 'LIARS_PORT' \
   --secret "${DOTENV_KEY_SECRET},type=env,target=DOTENV_KEY" \
@@ -156,10 +160,10 @@ podman create \
   --pod "${POD_NAME}" \
   --requires "liars-webserver" \
   -u "$UID" \
-  -v "$HOME/liars/nginx/conf/:/etc/nginx/conf.d/:U,ro" \
+  -v "$HOME/liars/nginx/conf/:/etc/nginx/conf.d/:U,rw" \
   -v "$NGINX_SSL_LOCATION:/etc/nginx/ssl/upstream/:U,ro" \
   -v "$HOME/liars/certbot/conf/:/etc/letsencrypt/:U,ro" \
-  docker.io/library/nginx:stable-alpine3.17
+  docker.io/nginxinc/nginx-unprivileged:stable-alpine3.17
 echo "Done!"
 
 echo "Starting pod..."
