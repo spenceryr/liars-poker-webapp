@@ -2,13 +2,23 @@ import { watch, ref, shallowRef, toValue } from "vue";
 import { checkType, checkTypes } from "/@/utilities/checkType";
 
 export function useLobby(lobbyEvent) {
-  /** @type {import("vue").Ref<Object<string, {connection: String, ready: boolean }>>} */
+  /** @type {import("vue").Ref<Object<string, { connection: string, ready: boolean, username: string }>>} */
   const playersInfo = ref({});
   /** @type {import("vue").Ref<Boolean>} */
   const inGame = shallowRef(false);
 
   function setPlayer(playerID, connection, ready) {
-    const playerInfo = { connection: connection, ready: ready };
+    if (!playersInfo.value[playerID]) {
+      console.error("Couldn't set player; missing from playersInfo");
+      return;
+    }
+    const username = playersInfo.value[playerID].username;
+    const playerInfo = { connection: connection, ready: ready, username: username };
+    playersInfo.value[playerID] = playerInfo;
+  }
+
+  function createPlayer(playerID, username) {
+    const playerInfo = { connection: 'CONNECTING', ready: false, username: username };
     playersInfo.value[playerID] = playerInfo;
   }
 
@@ -38,9 +48,10 @@ export function useLobby(lobbyEvent) {
       }
       case 'PLAYER_JOINED': {
         const playerID = lobbyEvent.player;
+        const username = lobbyEvent.username;
         if (!checkType(playerID, 'string')) return;
         console.debug(`Lobby processing PLAYER_JOINED ${playerID}`);
-        setPlayer(playerID, 'CONNECTING', false);
+        createPlayer(playerID, username);
         break;
       }
       case 'PLAYER_DISCONNECT': {

@@ -2,18 +2,21 @@
 import { ref } from 'vue';
 import detectColorMode from "/@/utilities/detect-color-mode.js";
 
+var username = ref('');
 var password = ref('');
-var loginResult = ref('');
+var loginError = ref('');
 var inputDisabled = ref(false);
+var usernameInput = ref(null);
+var passwordInput = ref(null);
 
 detectColorMode();
 
-function loginWithPassword() {
-  // inputDisabled.value = true;
-  loginResult.value = '';
-  if (password.value === '') {
+function login() {
+  loginError.value = '';
+  if (!usernameInput.value.checkValidity() || !passwordInput.value.checkValidity()) {
     return;
   }
+  inputDisabled.value = true;
   fetch('/login', {
     method: 'POST',
     headers: {
@@ -21,6 +24,7 @@ function loginWithPassword() {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
+      'username': username.value,
       'password': password.value
     })
   })
@@ -28,6 +32,7 @@ function loginWithPassword() {
     if (!res.ok) throw 'Invalid Password';
     let json = await res.json();
     if (!json || json.result === 'incorrect') throw 'Incorrect password.';
+    else if (json.result === 'invalid') throw json.error ?? 'Invalid username/password';
     else if (json.result === 'correct' && json.forward) {
       window.location.replace(json.forward);
       return "";
@@ -36,9 +41,9 @@ function loginWithPassword() {
   }, () => { throw 'Error occurred with login.' })
   .catch((result) => {
     if (typeof result === "string") {
-      loginResult.value = result;
+      loginError.value = result;
     } else {
-      loginResult.value = 'Error occurred';
+      loginError.value = 'Error occurred';
     }
   })
   .finally(() => {
@@ -54,10 +59,25 @@ function loginWithPassword() {
         <div class="row m-3 justify-content-center align-items-start">
           <h1 class="fw-bold">Liar's Poker For Da Boys</h1>
         </div>
-        <form @submit.prevent="loginWithPassword" class="row m-3 align-items-start justify-content-center">
+        <form @submit.prevent="login" class="row m-3 align-items-start justify-content-center">
           <div class="col-12 col-md-4 offset-md-4">
             <input
-              :class='{"is-invalid": loginResult !== "" }'
+              ref="usernameInput"
+              :class='{"is-invalid": loginError !== "" }'
+              :disabled="inputDisabled"
+              class="form-control"
+              placeholder="Enter Username"
+              type="text"
+              v-model="username"
+              autocomplete="off"
+              aria-describedby="validationResponse"
+              required
+              minlength="5"
+              maxlength="15"
+            />
+            <input
+              ref="passwordInput"
+              :class='{"is-invalid": loginError !== "" }'
               :disabled="inputDisabled"
               class="form-control"
               placeholder="Enter Password"
@@ -67,7 +87,7 @@ function loginWithPassword() {
               aria-describedby="validationResponse"
               required
             />
-            <div id="validationResponse" class="invalid-feedback">{{ loginResult }}</div>
+            <div id="validationResponse" class="invalid-feedback">{{ loginError }}</div>
           </div>
           <div class="col mt-3 mt-md-0 col-md-4">
             <input :disabled="inputDisabled" class="btn btn-primary" type="submit" value="Submit"/>

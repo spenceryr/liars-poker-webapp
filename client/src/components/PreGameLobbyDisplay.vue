@@ -27,7 +27,7 @@ const thisPlayerInfo = computed(() => {
   <ul class="list-group">
     <li class="list-group-item container-fluid" v-for="(playerInfo, playerID) in playersInfo">
       <PlayerListItem
-        :player-id="playerID"
+        :username="playerInfo.username"
         :connection="playerInfo.connection"
         :active="playerID === thisPlayerId"
       >

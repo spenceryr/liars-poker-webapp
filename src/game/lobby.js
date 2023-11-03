@@ -67,7 +67,8 @@ export class Lobby {
         (acc, curr) => Object.assign(acc, {
           [curr.player.playerID]: {
             connection: curr.isConnected ? 'CONNECTED' : (curr.isDisconnected ? 'DISCONNECTED' : 'CONNECTING'),
-            ready: curr.player.ready
+            ready: curr.player.ready,
+            username: curr.username
           }
         }),
         {}
@@ -93,6 +94,7 @@ export class Lobby {
       type: "LOBBY_EVENT",
       event: "PLAYER_JOINED",
       player: client.player.playerID,
+      username: client.username
     }));
     // Client has 30 seconds to connect before being dropped from lobby. This will not be refreshed if
     // client tries to join again before connection is established.

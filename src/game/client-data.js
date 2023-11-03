@@ -19,10 +19,12 @@ export class ClientData {
   /**
    *
    * @param {ClientID} clientID
+   * @param {string} username
    */
-  constructor(clientID) {
+  constructor(clientID, username) {
     this.leakyBucket = new LeakyBucket(10, 1000);
     this.clientID = clientID;
+    this.username = username;
     /** @type {WebSocket?} */
     this.ws = null;
     /** @type {LobbyID?} */

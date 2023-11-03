@@ -83,7 +83,7 @@ watch(currentPlayerTurn, () => {
       <PlayerReadyDisplay v-if="gameHasEnded && playersInfo[playerID]" :ready="playersInfo[playerID].ready"/>
       <PlayerListItem v-if="playersInfo[playerID]"
         v-player-call-tooltip="playerID === caller"
-        :player-id="playerID"
+        :username="playersInfo[playerID].username"
         :connection="playersInfo[playerID].connection"
       >
         <template #contextItem>
