@@ -1,6 +1,6 @@
 <script setup>
 import { ref, defineAsyncComponent, shallowRef, computed, nextTick } from 'vue';
-import { useWebSocket } from '/@/composables/websocket.js';
+import { useWebSocket, WS_CONNECTION_STATE } from '/@/composables/websocket.js';
 import { useLobby } from '/@/composables/lobby.js';
 import { useGameEventQueue } from '/@/composables/game-event-queue.js';
 import PreGameLobbyDisplay from '/@/components/PreGameLobbyDisplay.vue';
@@ -30,7 +30,7 @@ function onWSJSONMsg(msg) {
         }
         gameEvent.value = {
           event: 'INITIALIZE',
-          snapshot: msg.snapshot.game
+          data: msg.snapshot.game
         }
         thisPlayerID.value = msg.snapshot.playerID;
         nextTick(() => {
@@ -50,11 +50,11 @@ function onWSJSONMsg(msg) {
   }
 }
 
-const { connected: wsConnected, sendMsg } = useWebSocket(onWSJSONMsg);
+const { wsConnectionState, sendMsg } = useWebSocket(onWSJSONMsg);
 const { playersInfo, inGame } = useLobby(lobbyEvent);
 const { currentGameEvent } = useGameEventQueue(gameEvent);
 
-const connected = computed(() => wsConnected.value && initialized.value);
+const connectionState = computed(() => initialized.value ? wsConnectionState.value : WS_CONNECTION_STATE.CONNECTING);
 
 const CLIENT_MSGS = {
   PROPOSED_HAND: "PROPOSED_HAND",
@@ -99,11 +99,18 @@ function sendReady(ready) {
         <div class="row m-3 justify-content-center align-items-start">
           <h1 class="fw-bold">Liar's Poker For Da Boys</h1>
         </div>
-        <div class="row m-3" v-if="!connected">
+        <div class="row m-3" v-if="connectionState === WS_CONNECTION_STATE.CONNECTING">
           <h2>
             <span class="spinner-border ml-auto"></span>
             Connecting...
           </h2>
+        </div>
+        <div class="row m-3 text-danger" v-else-if="connectionState === WS_CONNECTION_STATE.DISCONNECTED">
+          <h2>
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span>Connection Lost!</span>
+          </h2>
+          <a class="btn btn-primary" href="/">Go Home</a>
         </div>
         <PreGameLobbyDisplay class="row m-3" v-else-if="!inGame"
           :players-info="playersInfo"

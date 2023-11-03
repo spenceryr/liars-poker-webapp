@@ -183,8 +183,14 @@ export class Lobby {
         this.destroyTimeout = setTimeout(() => this.destroyThis(), 60 * 1000);
       }
     } else {
-      // TODO: (spencer) Maybe don't immediately remove (incase they refresh page).
-      this.clientLeft(client);
+      // Don't immediately make them leave in case they refreshed page.
+      this.clientTimeouts.set(
+        client.clientID,
+        setTimeout((client) => {
+          if (!client.isDisconnected && !client.isDisconnecting) return;
+          this.clientLeft(client);
+        }, 5 * 1000, client)
+      );
     }
   }
 
