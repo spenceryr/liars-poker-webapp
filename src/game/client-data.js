@@ -27,6 +27,7 @@ export class ClientData {
     this.username = username;
     /** @type {WebSocket?} */
     this.ws = null;
+    this.wsHeartbeatTimer = null;
     /** @type {LobbyID?} */
     this.lobbyID = null;
     /** @type {import("./player").Player} */
@@ -47,6 +48,18 @@ export class ClientData {
     if (!this.isConnected) return;
     console.debug(`Sending message to ${this.clientID}: ${data}`);
     this.ws?.send(data);
+  }
+
+  startHeartbeat() {
+    if (this.wsHeartbeatTimer) clearInterval(this.wsHeartbeatTimer);
+    this.wsHeartbeatTimer = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.ping();
+    }, 5 * 1000);
+  }
+
+  stopHeartbeat() {
+    if (this.wsHeartbeatTimer) clearInterval(this.wsHeartbeatTimer);
+    this.wsHeartbeatTimer = null;
   }
 
   /**
@@ -83,6 +96,7 @@ export class ClientData {
         game: gameSnapshot
       }
     }));
+    this.startHeartbeat();
     assert(lobby.clientConnected(this));
     return true;
   }
@@ -115,6 +129,7 @@ export class ClientData {
   onClose() {
     console.debug(`Client ${this.clientID} disconnect`);
     this.lobby?.clientDisconnect(this);
+    this.stopHeartbeat();
   }
 
   /**
