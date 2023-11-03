@@ -18,7 +18,6 @@ export function useGameState(thisPlayerID, currentEvent) {
   watch(currentEvent, async (newEvent) => {
     const event = toValue(newEvent);
     if (!event) return;
-    if (gameHasEnded.value) return;
     // TODO: (spencer) Validate event data.
     switch (event.type) {
       case GAME_EVENTS.INITIALIZE: {
