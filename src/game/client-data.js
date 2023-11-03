@@ -61,6 +61,7 @@ export class ClientData {
     ws.on("close", this.onClose.bind(this));
     ws.on("message", this.onMessage.bind(this));
     let lobby = this.lobby;
+    // TODO: (spencer) Handle this
     if (!lobby) {
       console.debug(`Client ${this.clientID} connected without lobby!`);
       return false;
