@@ -40,6 +40,7 @@ loginctl enable-linger "${NEW_USER_NAME}"
 /usr/sbin/iptables -A INPUT -i lo -j ACCEPT
 /usr/sbin/iptables -A OUTPUT -o lo -j ACCEPT
 /usr/sbin/iptables -A INPUT -p tcp -m multiport --dports 80,443,22 -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
+/usr/sbin/iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 # Set up ipv6 iptables
 /usr/sbin/ip6tables -F
 /usr/sbin/ip6tables -P OUTPUT ACCEPT
@@ -49,6 +50,7 @@ loginctl enable-linger "${NEW_USER_NAME}"
 /usr/sbin/ip6tables -A INPUT -i lo -j ACCEPT
 /usr/sbin/ip6tables -A OUTPUT -o lo -j ACCEPT
 /usr/sbin/ip6tables -A INPUT -p tcp -m multiport --dports 80,443 -m conntrack --ctstate NEW,ESTABLISHED,RELATED -j ACCEPT
+/usr/sbin/ip6tables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 # Allow rootless users to send "pings"
 # https://www.redhat.com/sysadmin/container-networking-podman
 # sysctl -w "net.ipv4.ping_group_range=0 2000000"
