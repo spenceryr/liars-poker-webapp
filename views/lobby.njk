@@ -12,8 +12,9 @@
     {% if environment === 'production' %}
     <script type="module" src="/assets/{{ manifest['src/pages/lobby/main.js'].file }}"></script>
     {% else %}
-    <script type="module" src="http://localhost:5173/@vite/client"></script>
-    <script type="module" src='/@/pages/lobby/main.js'></script>
+    <!-- <script type="module" src="http://localhost:5173/@vite/client"></script> -->
+    <!-- <script type="module" src='/@/pages/lobby/main.js'></script> -->
+    <script type="module" src="/assets/{{ manifest['src/pages/lobby/main.js'].file }}"></script>
     {% endif %}
   </body>
 </html>

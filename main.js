@@ -123,7 +123,7 @@ function expressSetup(sessionRouter) {
   app.disable("x-powered-by");
   app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    limit: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+    limit: 1000, // Limit each IP to 1000 requests per `window` (here, per 15 minutes)
     standardHeaders: 'draft-7', // Set `RateLimit` and `RateLimit-Policy` headers
   }));
   app.use(sessionRouter);
@@ -225,7 +225,7 @@ function expressSetup(sessionRouter) {
       }
       if (!req.session.liarsClientID) {
         let clientID = randomUUID();
-        let client = new ClientData(clientID);
+        let client = new ClientData(clientID, username);
         ClientDataStore.set(clientID, client);
         assert(req.session.liarsClientID === undefined);
         req.session.liarsClientID = clientID;

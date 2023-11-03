@@ -30,7 +30,7 @@ function onWSJSONMsg(msg) {
         }
         gameEvent.value = {
           event: 'INITIALIZE',
-          data: msg.snapshot.game
+          snapshot: msg.snapshot.game
         }
         thisPlayerID.value = msg.snapshot.playerID;
         nextTick(() => {

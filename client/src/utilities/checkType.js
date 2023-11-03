@@ -1,3 +1,4 @@
+// Differentiates between things like arrays, objects, and null
 function typeOf(obj) {
   return ({}).toString.call(obj).match(/\s(\w+)/)[1].toLowerCase();
 }
@@ -8,7 +9,7 @@ function typeOf(obj) {
  * @param {string[] | string | Array<string | string[]>} types
  * @returns
  */
-export function checkTypes(values, types) {
+export function checkTypes(values, types) { // TODO: (spencer) Pass in array of tuples instead of two arrays
   if (Array.isArray(types)) {
     if (values.length !== types.length) return false;
     for (const [v, t] of values.map((v, i) => [v, types[i]])) {

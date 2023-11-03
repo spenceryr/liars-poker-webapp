@@ -98,8 +98,8 @@ watch(currentPlayerTurn, () => {
       </PlayerListItem>
     </li>
   </ul>
-  <div v-if="lastHand && lastPlayerTurn" class="mt-3">
-    <span><h2> {{ lastPlayerTurn }} proposed hand: </h2><CardsDisplay :cards='lastHand'/></span>
+  <div v-if="lastHand && lastPlayerTurn && playersInfo[lastPlayerTurn]" class="mt-3">
+    <span><h2 class="fw-bold"> {{ playersInfo[lastPlayerTurn].username }} proposed hand: </h2><CardsDisplay :cards='lastHand'/></span>
   </div>
   <div class="text-center container-fluid mt-3">
     <div v-if="!gameHasEnded" class="row-cols">
@@ -117,9 +117,9 @@ watch(currentPlayerTurn, () => {
     </div>
     <div v-else class="text-center container-fluid mt-3">
       <h2 class="row-cols">Game Over!</h2>
-      <h2 v-if="gameWinner" class="row-cols">
-        <span class="col fw-bold me-2">Winner 👑:</span>
-        <span class="col">{{ gameWinner }}!</span>
+      <h2 v-if="gameWinner && playersInfo[gameWinner]" class="row-cols fw-bold">
+        <span class="col me-2">Winner 👑:</span>
+        <span class="col">{{ playersInfo[gameWinner].username }}!</span>
       </h2>
       <div class="row mt-3">
         <button class="col ms-md-5 btn btn-secondary me-3" @click="() => $emit('returnLobby')">Return to Lobby</button>

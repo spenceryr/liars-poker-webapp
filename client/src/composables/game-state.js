@@ -13,7 +13,7 @@ export function useGameState(thisPlayerID, currentEvent) {
   const caller = shallowRef(null);
   const canCall = shallowRef(false);
   const gameHasEnded = shallowRef(false);
-  const gameWinner = shallowRef(false);
+  const gameWinner = shallowRef(null);
 
   watch(currentEvent, async (newEvent) => {
     const event = toValue(newEvent);

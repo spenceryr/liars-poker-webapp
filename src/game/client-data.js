@@ -68,7 +68,7 @@ export class ClientData {
       console.debug(`Client ${this.clientID} connected without lobby!`);
       return false;
     }
-    let gameSnapshot = (this.lobby.inGame && this.lobby.game?.getGameSnapshot()) || null;
+    let gameSnapshot = this.lobby.game?.getGameSnapshot() ?? null;
     // Add 'playerHand' prop to gameSnapshot to provide this player's hand.
     if (gameSnapshot) {
       gameSnapshot['playerHand'] = this.player.cards.map((card) => card.toObj());
