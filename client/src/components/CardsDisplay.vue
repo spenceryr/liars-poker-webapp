@@ -3,10 +3,10 @@ import { defineProps, computed } from 'vue'
 import PlayingCardIcon from '/@/components/PlayingCardIcon.vue'
 
 /**
- * @typedef {{value: number, suit: undefined, id: number}} UniqueCard
+ * @typedef {{value: number, suit: string | undefined, id: number}} UniqueCard
  */
 /**
- * @typedef {{value: number, suit: undefined}} Card
+ * @typedef {{value: number, suit: string | undefined}} Card
  */
 
 const props = defineProps({
@@ -21,19 +21,19 @@ const props = defineProps({
 let cardIDCounter = 0;
 /**
  *
- * @param {number} value
+ * @param {Card} card
  * @returns {UniqueCard}
  */
-function createUniqueCard(value) {
+function createUniqueCard(card) {
   return {
-    value: value,
+    value: card.value,
     id: cardIDCounter++,
-    suit: undefined
+    suit: card.suit
   };
 }
 
 const sortedUniqueCards = computed(() => {
-  return props.cards.map((card) => createUniqueCard(card.value)).sort((c1, c2) => c1.value - c2.value);
+  return props.cards.map((card) => createUniqueCard(card)).sort((c1, c2) => c1.value - c2.value);
 });
 
 </script>

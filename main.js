@@ -213,7 +213,7 @@ function expressSetup(sessionRouter) {
       let username = req.body.username;
       function validPasswordString(password) { return password && typeof password === "string"; }
       function validUsernameString(username) {
-        return username && typeof username === "string" && username.length >= 5 && username.length <= 15;
+        return username && typeof username === "string" && username.length >= 3 && username.length <= 15;
       }
       if (!validPasswordString(password)) return res.status(200).json({ result: "invalid", error: "Invalid password" });
       if (!validUsernameString(username)) return res.status(200).json({ result: "invalid", error: "Invalid username" });

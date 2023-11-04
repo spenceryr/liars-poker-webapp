@@ -72,7 +72,7 @@ function login() {
               autocomplete="off"
               aria-describedby="validationResponse"
               required
-              minlength="5"
+              minlength="3"
               maxlength="15"
             />
             <input
