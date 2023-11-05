@@ -56,7 +56,7 @@ export class Game {
     // TODO: (spencer) Create class.
     return {
       gameState: this.stateMachine.state,
-      gameWinner: this.gameWinner.playerID,
+      gameWinner: this.gameWinner?.playerID ?? null,
       currentPlayerTurn: this.players[this.currentPlayerTurnIndex].playerID,
       lastHand: this.lastHand?.cards.map((card) => card.toObj()) ?? null,
       lastHandPlayer: this.lastHandPlayer?.playerID ?? null,
