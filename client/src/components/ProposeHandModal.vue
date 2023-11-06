@@ -1,5 +1,5 @@
 <script setup>
-import { computed, defineProps, shallowRef, ref, onMounted, onUnmounted } from 'vue';
+import { computed, defineProps, shallowRef, ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue';
 import { PlayerCustomHand } from '/@/types/player-custom-hand.js'
 import { Modal } from 'bootstrap';
 import PlayingCardIcon from './PlayingCardIcon.vue';
@@ -20,10 +20,19 @@ const props = defineProps({
 });
 const emit = defineEmits(['proposed', 'close']);
 
+function onHide(e) {
+  emit('close');
+}
+
 onMounted(() => {
   modalObj = new Modal(modalRef.value);
+  modalRef.value.addEventListener('hidden.bs.modal', onHide);
   modalObj.show();
 });
+
+onBeforeUnmount(() => {
+  modalRef.value.removeEventListener('hidden.bs.modal', onHide);
+})
 
 onUnmounted(() => {
   modalObj.dispose();
