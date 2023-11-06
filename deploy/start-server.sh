@@ -56,6 +56,7 @@ echo "Collecting files from GitHub..."
 LIARS_BRANCH="main"
 curl -o "$HOME/liars/certbot/renew-certs.sh" "https://raw.githubusercontent.com/spenceryr/liars-poker-webapp/${LIARS_BRANCH}/deploy/renew-certs.sh"
 curl -o "$HOME/liars/nginx/conf/default.conf" "https://raw.githubusercontent.com/spenceryr/liars-poker-webapp/${LIARS_BRANCH}/deploy/nginx/default.conf"
+curl -o "$HOME/liars/nginx/cloudflare-sync-ips.sh" "https://raw.githubusercontent.com/spenceryr/liars-poker-webapp/${LIARS_BRANCH}/deploy/nginx/cloudflare-sync-ips.sh"
 echo "Done!"
 
 echo "Setting up cloudflare secret in podman..."
@@ -152,6 +153,8 @@ openssl req -x509 \
   -subj '/CN=localhost' > /dev/null
 echo "Done!"
 
+"$HOME/liars/nginx/cloudflare-sync-ips.sh" "$HOME/liars/nginx/conf/cloudflare"
+
 echo "Creating container for nginx..."
 podman create \
   --name "liars-nginx" \
@@ -170,10 +173,14 @@ echo "Starting pod..."
 podman pod start "${POD_NAME}"
 echo "Done!"
 
-echo "Creating cron job..."
+echo "Creating cron jobs..."
 # Create cron job to renew certs
 CRON_CMD="$HOME/liars/certbot/renew-certs.sh"
 CRON_JOB="0 12 * * * ${CRON_CMD}"
 # https://stackoverflow.com/a/17975418
+( crontab -l | grep -v -F "${CRON_CMD}" || : ; echo "${CRON_JOB}" ) | crontab -
+
+CRON_CMD="$HOME/liars/nginx/cloudflare-sync-ips.sh"
+CRON_JOB="30 2 * * * ${CRON_CMD} >/dev/null 2>&1"
 ( crontab -l | grep -v -F "${CRON_CMD}" || : ; echo "${CRON_JOB}" ) | crontab -
 echo "Done!"
