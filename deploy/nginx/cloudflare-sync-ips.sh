@@ -22,4 +22,7 @@ echo "" >> $CLOUDFLARE_FILE_PATH;
 echo "real_ip_header CF-Connecting-IP;" >> $CLOUDFLARE_FILE_PATH;
 
 #test configuration and reload nginx
-podman exec "liars-nginx" nginx -t && podman exec "liars-nginx" nginx -s reload
+ --latest
+if [ "$(podman container inspect "liars-nginx" --format {{.State.Running}})" = "true" ]; then
+  podman exec "liars-nginx" nginx -t && podman exec "liars-nginx" nginx -s reload
+fi

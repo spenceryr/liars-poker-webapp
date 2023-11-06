@@ -59,6 +59,9 @@ curl -o "$HOME/liars/nginx/conf/default.conf" "https://raw.githubusercontent.com
 curl -o "$HOME/liars/nginx/cloudflare-sync-ips.sh" "https://raw.githubusercontent.com/spenceryr/liars-poker-webapp/${LIARS_BRANCH}/deploy/nginx/cloudflare-sync-ips.sh"
 echo "Done!"
 
+chmod +x "$HOME/liars/certbot/renew-certs.sh"
+chmod +x "$HOME/liars/nginx/cloudflare-sync-ips.sh"
+
 echo "Setting up cloudflare secret in podman..."
 CLOUDFLARE_TOKEN_SECRET="cloudflare-credentials"
 if podman secret inspect "${CLOUDFLARE_TOKEN_SECRET}" &> /dev/null; then
