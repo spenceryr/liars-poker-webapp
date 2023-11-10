@@ -287,7 +287,7 @@ function getClientFromReq(req) {
 function main() {
   // TODO: (spencer) Harden cookie validation to prevent stolen cookies.
   let sessionRouter = session({
-    cookie: { path: '/', httpOnly: true, secure: true, sameSite: true, maxAge: 24 * 60 * 60 },
+    cookie: { path: '/', httpOnly: true, secure: true, sameSite: true, maxAge: 24 * 60 * 60 * 1000 },
     saveUninitialized: false,
     store: new FileStore({
       path: NODE_ENV === 'production' ? '/var/liars-webserver/sessions' : './sessions',
