@@ -56,7 +56,11 @@ export function useGameState(thisPlayerID, currentEvent) {
         console.debug(`Game processing PLAYER_TURN: ${JSON.stringify(event.data)}`);
         const data = event.data;
         currentPlayerTurn.value = data.player;
-        canCall.value = lastPlayerTurn.value && lastPlayerTurn.value !== toValue(thisPlayerID);
+        canCall.value = playerHand.value &&
+          Array.isArray(playerHand.value) &&
+          playerHand.value.length > 0 &&
+          lastPlayerTurn.value &&
+          lastPlayerTurn.value !== toValue(thisPlayerID);
         break;
       }
       case GAME_EVENTS.PLAYER_PROPOSE_HAND: {
@@ -80,7 +84,8 @@ export function useGameState(thisPlayerID, currentEvent) {
         caller.value = null;
         winner.value = data.winner;
         loser.value = data.loser;
-        await new Promise((resolve) => setTimeout(resolve, 5 * 1000));
+        // TODO: (spencer) Maybe set timeout based on total number of cards?
+        await new Promise((resolve) => setTimeout(resolve, 7 * 1000));
         break;
       }
       case GAME_EVENTS.GAME_OVER: {

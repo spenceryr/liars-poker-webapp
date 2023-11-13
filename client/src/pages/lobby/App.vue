@@ -97,7 +97,7 @@ function sendReady(ready) {
     <div class="d-flex justify-content-center align-items-center">
       <div class="container min-vh-100">
         <div class="row m-3 justify-content-center align-items-start">
-          <h1 class="fw-bold">Liar's Poker For Da Boys</h1>
+          <h1 class="fw-bold">Liar's Poker</h1>
         </div>
         <div class="row m-3" v-if="connectionState === WS_CONNECTION_STATE.CONNECTING">
           <h2>

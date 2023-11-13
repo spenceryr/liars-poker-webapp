@@ -24,13 +24,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const manifest = (() => {
-  const manifestPath = path.join(__dirname, "public", "dist", "manifest.json");
-  const manifestFile = readFileSync(manifestPath);
-
-  return JSON.parse(manifestFile);
-})();
-
 /** @type {string} */
 const SERVER_KEY_PATH = process.env.SERVER_KEY_PATH;
 assert(SERVER_KEY_PATH);
@@ -52,6 +45,23 @@ assert(NODE_ENV);
 /** @type {string} */
 const LIARS_PORT = process.env.LIARS_PORT;
 assert(LIARS_PORT);
+const SESSION_COOKIE_NAME = 'sessionID';
+const SESSION_COOKIE_OPTIONS = { path: '/', httpOnly: true, secure: true, sameSite: true, maxAge: 24 * 60 * 60 * 1000 };
+
+const manifest = (() => {
+  const manifestPath = path.join(__dirname, "public", "dist", "manifest.json");
+  const manifestFile = readFileSync(manifestPath);
+
+  return JSON.parse(manifestFile);
+})();
+
+const sessionFileStore = new FileStore({
+  path: NODE_ENV === 'production' ? '/var/liars-webserver/sessions' : './sessions',
+  ttl: 24 * 60 * 60,
+  reapAsync: true,
+  reapSyncFallback: true,
+  secret: SESSION_STORE_SECRET
+});
 
 /**
  * @param {Express} app
@@ -133,10 +143,25 @@ function expressSetup(sessionRouter) {
     res.sendStatus(400)
   });
 
-  app.use(function setClient(req, res, next) {
+  async function logoutUser(req, res) {
+    return new Promise((resolve) => {
+      assert(req.session);
+      let cookie = req.session.cookie;
+      req.session.destroy((err) => {
+        if (err) console.error(`Error destroying session ${req.sessionID}: ${err}`);
+        if (cookie) res.clearCookie(SESSION_COOKIE_NAME, cookie);
+        res.redirect("/");
+        resolve();
+      });
+    });
+  }
+
+  app.use(async function setClient(req, res, next) {
     if (req.session.liarsClientID) {
       assert(req.liarsClient === undefined);
-      req.liarsClient = ClientDataStore.get(req.session.liarsClientID);
+      let client = ClientDataStore.get(req.session.liarsClientID);
+      if (!client) return logoutUser(req, res);
+      else req.liarsClient = client;
     }
     next();
   });
@@ -251,22 +276,27 @@ function expressSetup(sessionRouter) {
   }
 
   authRouter.get("/lobby-list",
-    // TODO: (spencer) Remove once have multi-lobby support.
-    generateLobbyIfNoLobbies(),
-    function serveLobbiesList(req, res) {
-      res.render("lobby-list.njk", { lobbies: Array.from(LobbyStore.entries()).map(([lobbyID, lobby]) => lobbyID) });
+    function serveLobbyList(req, res) {
+      res.render("lobby-list.njk", { environment: NODE_ENV, manifest });
     },
     handleRenderError()
   );
 
+  authRouter.get("/lobby-list-json",
+    // TODO: (spencer) Remove once have multi-lobby support.
+    generateLobbyIfNoLobbies(),
+    function getLobbiesJSON(req, res) {
+      let lobbies = Array.from(LobbyStore.entries()).map(([lobbyID, lobby]) => lobbyID);
+      res.status(200).json(lobbies.reduce((acc, curr) => Object.assign(acc, { [curr]: {} }), {}));
+    },
+  )
+
   // TODO: (spencer) Use connect-ensure-login once multiple lobbies are supported.
   authRouter.get("/lobby/:lobbyID",
-  // TODO: (spencer) Remove once have multi-lobby support.
-    generateLobbyIfNoLobbies(),
     function goToLobby(req, res) {
       let lobbyID = req.params.lobbyID;
       if (!req.liarsClient.joinLobby(lobbyID)) return res.redirect("/lobby-list");
-      res.render("lobby.njk", { lobby: LobbyStore.get(lobbyID), environment: NODE_ENV, manifest });
+      res.render("lobby.njk", { environment: NODE_ENV, manifest });
     },
     handleRenderError()
   );
@@ -287,18 +317,12 @@ function getClientFromReq(req) {
 function main() {
   // TODO: (spencer) Harden cookie validation to prevent stolen cookies.
   let sessionRouter = session({
-    cookie: { path: '/', httpOnly: true, secure: true, sameSite: true, maxAge: 24 * 60 * 60 * 1000 },
+    cookie: SESSION_COOKIE_OPTIONS,
     saveUninitialized: false,
-    store: new FileStore({
-      path: NODE_ENV === 'production' ? '/var/liars-webserver/sessions' : './sessions',
-      ttl: 24 * 60 * 60,
-      reapAsync: true,
-      reapSyncFallback: true,
-      secret: SESSION_STORE_SECRET
-    }),
+    store: sessionFileStore,
     resave: false,
     secret: SESSION_COOKIE_SECRET,
-    name: "sessionID"
+    name: SESSION_COOKIE_NAME
   });
   const app = expressSetup(sessionRouter);
   const httpsServer = createHTTPSServer(app);
