@@ -74,6 +74,7 @@ echo "Creating and starting liars-certbot container..."
 podman create \
   --name "liars-certbot" \
   --replace \
+  --pull always \
   -v "$HOME/liars/certbot/conf/:/etc/letsencrypt/:U,rw" \
   -v "$HOME/liars/certbot/logs/:/var/log/letsencrypt/:U,rw" \
   -u "$UID" \
@@ -133,6 +134,7 @@ LIARS_PORT=3333 \
 podman create \
   --name "liars-webserver" \
   --replace \
+  --pull always \
   --pod "${POD_NAME}" \
   -u "$UID" \
   -v "$WEBSERVER_SSL_LOCATION:/etc/liars-webserver/:U,rw" \
@@ -163,6 +165,7 @@ podman create \
   --name "liars-nginx" \
   --replace \
   --pod "${POD_NAME}" \
+  --pull always \
   --requires "liars-webserver" \
   -u "$UID" \
   -v "$HOME/liars/nginx/conf/:/etc/nginx/conf.d/:U,rw" \
