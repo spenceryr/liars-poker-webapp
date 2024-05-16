@@ -78,6 +78,7 @@ podman create \
   -v "$HOME/liars/certbot/conf/:/etc/letsencrypt/:U,rw" \
   -v "$HOME/liars/certbot/logs/:/var/log/letsencrypt/:U,rw" \
   -u "$UID" \
+  --userns keep-id \
   --secret "${CLOUDFLARE_TOKEN_SECRET},type=mount,mode=0400,uid=${UID}" \
   docker.io/certbot/dns-cloudflare:latest \
   certonly \
